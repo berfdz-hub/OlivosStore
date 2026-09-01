@@ -29,6 +29,7 @@
   <button data-tab="estacionamiento">Estacionamiento</button>
   <button data-tab="catalogo">Catálogo</button>
   <button data-tab="usuarios">Usuarios</button>
+  <button data-tab="glosario">Glosario</button>
 </div>
 
 <main class="wrap">
@@ -117,9 +118,10 @@
   </div>
 
   <div class="pane" id="pane-estacionamiento">
-    <h2 class="section-title" style="margin-top:20px">Estacionamiento por partido</h2>
-    <p class="footnote" style="margin-top:6px">"Venta ventana ±" es la venta de la tienda entre 60 min antes y 150 min después del arranque de cada partido — no es correlación estadística formal, solo referencia mientras se acumulan más partidos.</p>
+    <h2 class="section-title" style="margin-top:20px">¿Más autos significa más venta?</h2>
+    <p class="footnote" style="margin-top:6px">"Venta ventana ±" es la venta de la tienda entre 60 min antes y 150 min después del arranque de cada partido — no es correlación estadística formal, solo referencia mientras se acumulan más partidos. Ver <a href="#" onclick="document.querySelector('[data-tab=glosario]').click();return false">glosario</a>.</p>
     <div id="parkingInsight"></div>
+    <div class="grid grid3" id="parkingCards" style="margin-top:14px"></div>
     <div class="card" style="margin-top:14px">
       <div class="scroll"><table id="tblParking"><thead><tr><th>Fecha</th><th>Hora</th><th class="num">Autos (lote)</th><th class="num">Autos cobrados</th><th class="num">Ingreso</th><th class="num">Venta ventana ±</th><th class="num">Venta/auto</th></tr></thead><tbody></tbody></table></div>
     </div>
@@ -150,6 +152,52 @@
     <p class="footnote" style="margin-top:6px">Cambia el rol o desactiva una cuenta. Las cuentas nuevas se crean solas al registrarse (siempre como "operador").</p>
     <div class="card" style="margin-top:14px">
       <div class="scroll"><table id="tblUsers"><thead><tr><th>Nombre</th><th>Rol</th><th>Activo</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-glosario">
+    <h2 class="section-title" style="margin-top:20px">Glosario</h2>
+    <p class="footnote" style="margin-top:6px">Qué significa cada término que usa la app, en español sencillo.</p>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:22px 0 6px">Ventas y tickets</h3>
+    <div class="card">
+      <dl class="gloss-item"><dt>Ticket</dt><dd>Cada venta o recibo cerrado en la caja. Si un cliente compró 3 cosas en una sola cuenta, eso es <b>un</b> ticket con 3 unidades.</dd></dl>
+      <dl class="gloss-item"><dt>Ticket promedio</dt><dd>La venta total dividida entre el número de tickets. Es "cuánto deja en promedio cada cliente que compra".</dd></dl>
+      <dl class="gloss-item"><dt>Ticket mediano</dt><dd>Si ordenas todos los tickets del más chico al más grande, es el que queda justo a la mitad. A diferencia del promedio, no se deja engañar por uno o dos tickets muy grandes (como una compra de $475).</dd></dl>
+      <dl class="gloss-item"><dt>Unidades por ticket</dt><dd>Cuántos productos en promedio lleva cada venta. Si es 2.4, en promedio cada cliente se lleva entre 2 y 3 productos.</dd></dl>
+      <dl class="gloss-item"><dt>Tickets de 1 producto</dt><dd>Qué porcentaje de las ventas fueron de un solo artículo (ej. "solo un agua"). Un número alto sugiere oportunidad de combos para que se lleven más cosas por venta.</dd></dl>
+    </div>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:22px 0 6px">Productos, costo y utilidad</h3>
+    <div class="card">
+      <dl class="gloss-item"><dt>Costo (de compra)</dt><dd>Lo que te cuesta a ti comprar o producir una unidad de ese producto.</dd></dl>
+      <dl class="gloss-item"><dt>Precio (de venta)</dt><dd>Lo que le cobras al cliente por una unidad.</dd></dl>
+      <dl class="gloss-item"><dt>Utilidad</dt><dd>La ganancia en pesos: precio de venta menos costo de compra, multiplicado por las unidades vendidas.</dd></dl>
+      <dl class="gloss-item"><dt>Margen</dt><dd>Qué porcentaje de la venta es ganancia. Si un producto se vende en $25 y cuesta $10, la utilidad es $15 y el margen es 60% ($15 de $25).</dd></dl>
+      <dl class="gloss-item"><dt>Mapa de calor</dt><dd>Una tabla de producto × hora donde el color indica cuánto se vendió: entre más oscuro, más unidades se vendieron de ese producto en esa hora del día.</dd></dl>
+      <dl class="gloss-item"><dt>Combo / canasta</dt><dd>Productos que los clientes compran juntos seguido en el mismo ticket (ej. banderilla + agua). Sirve para armar paquetes que la gente ya está comprando por su cuenta.</dd></dl>
+      <dl class="gloss-item"><dt>Lift</dt><dd>Qué tan seguido se compran dos productos juntos comparado con lo que pasaría solo por casualidad. <b>Lift de 1</b> = se compran juntos ni más ni menos de lo esperado, es pura coincidencia. <b>Lift de 3</b> = se compran juntos 3 veces más seguido de lo que el azar explicaría — ahí sí hay una relación real entre esos dos productos.</dd></dl>
+    </div>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:22px 0 6px">Estacionamiento</h3>
+    <div class="card">
+      <dl class="gloss-item"><dt>Venta ventana ±</dt><dd>La venta de la tienda en un rango de tiempo alrededor de cada partido (60 minutos antes del arranque hasta 150 minutos después), para poder comparar partido contra partido.</dd></dl>
+      <dl class="gloss-item"><dt>Venta por auto</dt><dd>La venta ventana ± dividida entre los autos que entraron a ese partido. Ayuda a ver si más autos realmente se traduce en más venta, o si la tienda no logra atender a todos por igual cuando hay mucha gente.</dd></dl>
+      <dl class="gloss-item"><dt>Correlación</dt><dd>Un número entre -1 y 1 que dice qué tanto se mueven juntas dos cosas (aquí: autos y venta). Cercano a <b>1</b> = cuando suben los autos, sube la venta casi siempre. Cercano a <b>0</b> = no hay relación clara. Cercano a <b>-1</b> = cuando suben los autos, la venta por auto tiende a bajar. Con pocos partidos capturados este número no es muy confiable — se necesitan varios para que signifique algo.</dd></dl>
+    </div>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:22px 0 6px">Inventario</h3>
+    <div class="card">
+      <dl class="gloss-item"><dt>Inventario teórico</dt><dd>Lo que "debería" quedar en el anaquel según los números: inventario inicial del día menos lo que se vendió. Es un cálculo, no un conteo real.</dd></dl>
+      <dl class="gloss-item"><dt>Conteo físico</dt><dd>Lo que de verdad hay en el anaquel cuando alguien lo cuenta a mano al cierre.</dd></dl>
+      <dl class="gloss-item"><dt>Merma</dt><dd>Cuando el conteo físico es menor al teórico: falta mercancía que no se explica por ventas registradas (se rompió, se regaló, se registró mal, o se perdió).</dd></dl>
+    </div>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:22px 0 6px">Cuentas y captura</h3>
+    <div class="card">
+      <dl class="gloss-item"><dt>Operador</dt><dd>Cuenta para el personal que captura los datos del día (sube el CSV, anota los partidos y el conteo físico). No ve costos de compra ni utilidad.</dd></dl>
+      <dl class="gloss-item"><dt>Admin</dt><dd>Cuenta con acceso completo: ve todos los reportes con costos y utilidad, edita el catálogo de productos, y administra quién es operador o admin.</dd></dl>
+      <dl class="gloss-item"><dt>Día "borrador" / "enviado" / "revisado"</dt><dd>El estado de una captura: <b>borrador</b> apenas se está armando, <b>enviado</b> ya se guardó completo, <b>revisado</b> el admin ya lo validó (este último se marca manualmente si lo necesitas más adelante).</dd></dl>
     </div>
   </div>
 
@@ -584,16 +632,40 @@ function renderEstacionamiento() {
   `).join('') || '<tr><td colspan="7">No hay partidos capturados en el periodo.</td></tr>';
 
   const withCars = rows.filter(r => r.autosLote > 0);
+
+  // tarjetas: un vistazo rapido por partido
+  document.getElementById('parkingCards').innerHTML = rows.map(r => `
+    <div class="pk-card">
+      <div class="t">${r.fecha} · ${r.hora}</div>
+      <div class="n">${r.autosLote} <small>autos</small></div>
+      <div class="d">${money(r.venta)} en venta en la ventana del partido</div>
+      <div class="ratio">Venta por auto: <b>${r.autosLote ? moneyD(r.venta / r.autosLote) : '—'}</b></div>
+    </div>`).join('') || '';
+
+  // correlacion de Pearson entre autos y venta, cuando hay suficientes partidos
+  function pearson(xs, ys) {
+    const n = xs.length;
+    const mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n;
+    let num = 0, dx2 = 0, dy2 = 0;
+    for (let i = 0; i < n; i++) { const dx = xs[i] - mx, dy = ys[i] - my; num += dx * dy; dx2 += dx * dx; dy2 += dy * dy; }
+    return (dx2 && dy2) ? num / Math.sqrt(dx2 * dy2) : null;
+  }
+
   const insightEl = document.getElementById('parkingInsight');
   if (withCars.length >= 2) {
     const sorted = [...withCars].sort((a, b) => a.autosLote - b.autosLote);
     const smallest = sorted[0], biggest = sorted[sorted.length - 1];
     const ratioSmall = smallest.venta / smallest.autosLote, ratioBig = biggest.venta / biggest.autosLote;
+    let corrLine = '';
+    if (withCars.length >= 4) {
+      const r = pearson(withCars.map(x => x.autosLote), withCars.map(x => x.venta));
+      if (r != null) corrLine = ` Correlación (autos vs. venta, ${withCars.length} partidos): <b>${r.toFixed(2)}</b> — ${Math.abs(r) < 0.3 ? 'prácticamente nula' : Math.abs(r) < 0.6 ? 'moderada' : 'fuerte'}${r < 0 ? ', e inversa (a más autos, menos venta relativa)' : ''}.`;
+    }
     insightEl.innerHTML = `<div class="msg ${ratioBig < ratioSmall ? 'warn' : 'ok'}">
       El partido con menos autos (${smallest.autosLote}, ${smallest.fecha}) dejó ${moneyD(ratioSmall)} de venta por auto;
       el de más autos (${biggest.autosLote}, ${biggest.fecha}) dejó ${moneyD(ratioBig)} por auto.
       ${ratioBig < ratioSmall ? 'Más autos no está trayendo más venta proporcional — posible cuello de botella en caja en los partidos grandes.' : 'La venta por auto se mantiene o mejora con más autos.'}
-      Con ${withCars.length} partidos capturados esto es un patrón a observar, no una conclusión estadística todavía.
+      Con ${withCars.length} partido(s) capturado(s) esto es un patrón a observar${withCars.length < 4 ? ', no una conclusión estadística todavía (se necesitan al menos 4-5 partidos para calcular una correlación con algo de sentido)' : ''}.${corrLine}
     </div>`;
   } else {
     insightEl.innerHTML = '';

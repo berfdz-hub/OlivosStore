@@ -126,6 +126,15 @@ td.num{font-family:'IBM Plex Mono'}
 .catbar-track{height:14px;background:var(--surface-2);border-radius:7px;overflow:hidden}
 .catbar-fill{height:100%;border-radius:7px}
 
+/* parking cards */
+.pk-card{border:1px solid var(--line);border-radius:9px;padding:16px 18px;background:var(--surface)}
+.pk-card .t{font:600 11.5px 'IBM Plex Mono';color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.pk-card .n{font-family:'Big Shoulders Display';font-size:28px;font-weight:800;margin-top:4px}
+.pk-card .n small{font-size:14px;color:var(--muted);font-family:'Source Sans 3';font-weight:400}
+.pk-card .d{font-size:12.5px;color:var(--ink-2);margin-top:8px;line-height:1.5}
+.pk-card .ratio{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:12.5px}
+.pk-card .ratio b{color:var(--amber);font-family:'IBM Plex Mono'}
+
 /* combo cards */
 .combo{border:1px solid var(--line);border-radius:9px;padding:16px 18px;background:var(--surface)}
 .combo h4{margin:0;font:700 15.5px 'Source Sans 3';display:flex;justify-content:space-between;align-items:baseline;gap:10px}
@@ -144,6 +153,13 @@ td.num{font-family:'IBM Plex Mono'}
 .msg.err{background:var(--clay-soft);color:var(--clay);border-left:3px solid var(--clay)}
 .msg.ok{background:var(--brand-soft);color:var(--brand);border-left:3px solid var(--brand)}
 .msg.warn{background:var(--amber-soft);color:var(--amber);border-left:3px solid var(--amber)}
+
+/* glosario */
+.gloss-item{padding:14px 0;border-bottom:1px solid var(--line)}
+.gloss-item:last-child{border-bottom:none}
+.gloss-item dt{font:700 14.5px 'Source Sans 3';color:var(--ink);margin-bottom:4px}
+.gloss-item dd{margin:0;font-size:13.5px;color:var(--ink-2);line-height:1.55}
+.gloss-item dd b{color:var(--ink)}
 
 /* login card */
 .auth-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:32px 28px;box-shadow:var(--shadow)}
