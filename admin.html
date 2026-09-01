@@ -206,7 +206,7 @@ async function loadAll() {
     }
   }
 
-  const { data: games } = await supabase.from('games').select('id, sale_day_id, start_time, cars_parked, cars_charged, parking_rate').in('sale_day_id', dayIds);
+  const { data: games } = await supabase.from('games').select('id, sale_day_id, start_time, cars_parked, cars_charged, parking_rate, charges_parking, notes').in('sale_day_id', dayIds);
   GAMES = games || [];
 
   const { data: invc } = await supabase.from('inventory_counts').select('id, sale_day_id, product_id, opening_stock, sold, physical_count, note').in('sale_day_id', dayIds);
@@ -438,12 +438,16 @@ function renderEstacionamiento() {
     return {
       fecha: day ? day.date : '?', hora: g.start_time,
       autosLote: g.cars_parked, autosCobrados: g.cars_charged,
-      ingreso: g.cars_charged * g.parking_rate, venta
+      cobra: g.charges_parking !== false,
+      ingreso: g.charges_parking === false ? 0 : g.cars_charged * g.parking_rate,
+      venta, nota: g.notes || ''
     };
   }).sort((a, b) => b.fecha.localeCompare(a.fecha));
   document.querySelector('#tblParking tbody').innerHTML = rows.map(r => `
-    <tr><td>${r.fecha}</td><td>${r.hora}</td><td class="num">${r.autosLote}</td><td class="num">${r.autosCobrados}</td>
-      <td class="num">${money(r.ingreso)}</td><td class="num">${money(r.venta)}</td></tr>
+    <tr><td>${r.fecha}</td><td>${r.hora}${r.nota ? `<div class="footnote">${r.nota}</div>` : ''}</td>
+      <td class="num">${r.autosLote}</td><td class="num">${r.autosCobrados}</td>
+      <td class="num">${r.cobra ? money(r.ingreso) : '<span class="chip draft">sin cobro</span>'}</td>
+      <td class="num">${money(r.venta)}</td></tr>
   `).join('') || '<tr><td colspan="6">No hay partidos capturados en el periodo.</td></tr>';
 }
 

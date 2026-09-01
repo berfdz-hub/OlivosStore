@@ -33,6 +33,7 @@
         <div class="field">
           <label>Fecha</label>
           <input type="date" id="fDate" required>
+          <div class="hint" id="fDateDay"></div>
         </div>
         <div class="field">
           <label>Deporte</label>
@@ -55,7 +56,7 @@
 
     <div class="card">
       <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:4px">Partidos y estacionamiento</h3>
-      <p class="footnote" style="margin-bottom:12px">Si un partido no tuvo estacionamiento, deja los autos en 0.</p>
+      <p class="footnote" style="margin-bottom:12px">Agrega un partido por cada juego del día — incluye los amistosos o de liga entre semana. Si ese partido no cobró estacionamiento, desmarca la casilla.</p>
       <div id="games"></div>
       <button type="button" class="btn sec sm" onclick="addGame()">+ Agregar partido</button>
     </div>
@@ -99,23 +100,33 @@ window.doLogout = signOut;
 let CATALOG = [];
 let PARSED_TICKETS = null;
 
-function addGame(hora = '', ap = '', ac = '') {
-  const el = document.createElement('div');
-  el.className = 'grid grid3';
-  el.style.marginBottom = '10px';
-  el.innerHTML = `
-    <div class="field" style="margin-bottom:0"><label>Hora de inicio</label><input type="time" class="gHora" value="${hora}"></div>
-    <div class="field" style="margin-bottom:0"><label>Autos en el lote</label><input type="number" class="gAutosP" min="0" value="${ap}"></div>
-    <div class="field" style="margin-bottom:0"><label>Autos cobrados</label><input type="number" class="gAutosC" min="0" value="${ac}"></div>
-  `;
+function addGame(hora = '', ap = '', ac = '', cobra = true, nota = '') {
   const wrap = document.createElement('div');
-  wrap.style.display = 'flex'; wrap.style.gap = '8px'; wrap.style.alignItems = 'flex-end'; wrap.style.marginBottom = '10px';
-  wrap.appendChild(el);
-  const rm = document.createElement('button');
-  rm.type = 'button'; rm.className = 'btn sec sm'; rm.textContent = 'Quitar';
-  rm.style.marginBottom = '0';
-  rm.onclick = () => wrap.remove();
-  wrap.appendChild(rm);
+  wrap.style.border = '1px solid var(--line)';
+  wrap.style.borderRadius = '8px';
+  wrap.style.padding = '12px';
+  wrap.style.marginBottom = '10px';
+  wrap.innerHTML = `
+    <div class="grid grid3">
+      <div class="field" style="margin-bottom:0"><label>Hora de inicio</label><input type="time" class="gHora" value="${hora}"></div>
+      <div class="field" style="margin-bottom:0"><label>Autos en el lote</label><input type="number" class="gAutosP" min="0" value="${ap}"></div>
+      <div class="field" style="margin-bottom:0"><label>Autos cobrados</label><input type="number" class="gAutosC" min="0" value="${ac}"></div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:center;margin-top:10px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin:0"><input type="checkbox" class="gCobra" ${cobra ? 'checked' : ''}> Se cobra estacionamiento</label>
+      <input type="text" class="gNota" placeholder="Nota (ej. amistoso entre semana, liga...)" value="${nota}" style="flex:1;min-width:180px;padding:6px 10px">
+      <button type="button" class="btn sec sm gQuitar" style="margin:0">Quitar</button>
+    </div>
+  `;
+  const cobraBox = wrap.querySelector('.gCobra');
+  const acInput = wrap.querySelector('.gAutosC');
+  const syncCobra = () => {
+    acInput.disabled = !cobraBox.checked;
+    if (!cobraBox.checked) acInput.value = 0;
+  };
+  cobraBox.addEventListener('change', syncCobra);
+  syncCobra();
+  wrap.querySelector('.gQuitar').onclick = () => wrap.remove();
   document.getElementById('games').appendChild(wrap);
 }
 window.addGame = addGame;
@@ -124,9 +135,23 @@ function getGames() {
   return [...document.getElementById('games').children].map(row => {
     const hora = row.querySelector('.gHora').value;
     const ap = parseInt(row.querySelector('.gAutosP').value) || 0;
-    const ac = parseInt(row.querySelector('.gAutosC').value) || 0;
-    return { hora, ap, ac };
+    const cobra = row.querySelector('.gCobra').checked;
+    const ac = cobra ? (parseInt(row.querySelector('.gAutosC').value) || 0) : 0;
+    const nota = row.querySelector('.gNota').value.trim();
+    return { hora, ap, ac, cobra, nota };
   }).filter(g => g.hora);
+}
+
+function updateDayLabel() {
+  const v = document.getElementById('fDate').value;
+  const el = document.getElementById('fDateDay');
+  if (!v) { el.textContent = ''; return; }
+  const [y, m, d] = v.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  const dow = dt.getDay(); // 0 dom .. 6 sab
+  const nombre = dt.toLocaleDateString('es-MX', { weekday: 'long' });
+  const esFinde = dow === 0 || dow === 6;
+  el.textContent = esFinde ? `${nombre} (fin de semana)` : `${nombre} (entre semana)`;
 }
 
 function msg(type, html) { document.getElementById('msgBox').innerHTML = `<div class="msg ${type}">${html}</div>`; }
@@ -143,6 +168,8 @@ async function init() {
 
   document.getElementById('fDate').value = new Date().toISOString().slice(0, 10);
   addGame();
+  updateDayLabel();
+  document.getElementById('fDate').addEventListener('change', updateDayLabel);
 
   const { data: products, error } = await supabase
     .from('products_view').select('id, name, category, sell_price').eq('active', true).order('name');
@@ -203,7 +230,8 @@ async function onSubmit(e) {
 
     if (games.length) {
       const gamesRows = games.map(g => ({
-        sale_day_id: day.id, start_time: g.hora, cars_parked: g.ap, cars_charged: g.ac, parking_rate: rate
+        sale_day_id: day.id, start_time: g.hora, cars_parked: g.ap, cars_charged: g.ac,
+        parking_rate: rate, charges_parking: g.cobra, notes: g.nota || null
       }));
       const { error: gErr } = await supabase.from('games').insert(gamesRows);
       if (gErr) throw new Error('Error guardando partidos: ' + gErr.message);
@@ -240,6 +268,7 @@ async function onSubmit(e) {
     msg('ok', `Día ${date} guardado correctamente.`);
     document.getElementById('formDay').reset();
     document.getElementById('fDate').value = new Date().toISOString().slice(0, 10);
+    updateDayLabel();
     document.getElementById('games').innerHTML = ''; addGame();
     document.getElementById('csvSummary').innerHTML = '';
     PARSED_TICKETS = null;

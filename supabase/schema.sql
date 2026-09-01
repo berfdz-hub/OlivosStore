@@ -132,6 +132,7 @@ create table public.games (
   cars_parked int not null default 0,
   cars_charged int not null default 0,
   parking_rate numeric(10,2) not null default 30,
+  charges_parking boolean not null default true,
   notes text
 );
 
