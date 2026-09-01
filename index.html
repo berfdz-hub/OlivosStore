@@ -85,7 +85,7 @@ window.setMode = (mode) => {
   }
   const profile = await getCurrentProfile();
   if (profile) {
-    window.location.href = profile.role === 'admin' ? 'admin.html' : 'operador.html';
+    window.location.href = profile.role === 'admin' ? 'reportes.html' : 'operador.html';
   }
 })();
 
@@ -105,7 +105,7 @@ document.getElementById('formLogin').addEventListener('submit', async (e) => {
     return;
   }
   const profile = await getCurrentProfile();
-  window.location.href = (profile && profile.role === 'admin') ? 'admin.html' : 'operador.html';
+  window.location.href = (profile && profile.role === 'admin') ? 'reportes.html' : 'operador.html';
 });
 
 document.getElementById('formSignup').addEventListener('submit', async (e) => {

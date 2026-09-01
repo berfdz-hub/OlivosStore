@@ -3,38 +3,41 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin · Tienda Olivos</title>
+<title>Reportes · Tienda Olivos</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<div class="topbar">
+<div class="topbar noprint">
   <div class="wrap">
     <div class="brand"><span class="dot"></span> Tienda Olivos</div>
     <div class="who">
       <span id="whoName"></span>
-      <span class="role-pill admin">ADMIN</span>
+      <span class="role-pill" id="rolePill">ADMIN</span>
       <a href="operador.html" class="btn-ghost" style="text-decoration:none">Capturar día</a>
+      <button class="btn-ghost" onclick="window.print()">Exportar / imprimir</button>
       <button class="btn-ghost" onclick="doLogout()">Salir</button>
     </div>
   </div>
 </div>
 
-<div class="tabbar" id="tabbar">
+<div class="tabbar noprint" id="tabbar">
   <button class="on" data-tab="resumen">Resumen</button>
   <button data-tab="productos">Productos</button>
   <button data-tab="calor">Mapa de calor</button>
   <button data-tab="combos">Combos</button>
+  <button data-tab="comparativa">Comparativa</button>
+  <button data-tab="compras">Lista de compras</button>
   <button data-tab="inventario">Inventario</button>
   <button data-tab="estacionamiento">Estacionamiento</button>
-  <button data-tab="catalogo">Catálogo</button>
-  <button data-tab="usuarios">Usuarios</button>
+  <button data-tab="catalogo" class="admin-only">Catálogo</button>
+  <button data-tab="usuarios" class="admin-only">Usuarios</button>
   <button data-tab="glosario">Glosario</button>
 </div>
 
 <main class="wrap">
 
-  <div class="card" style="margin-bottom:0">
+  <div class="card noprint" style="margin-bottom:0">
     <div class="grid grid4">
       <div class="field" style="margin-bottom:0"><label>Desde</label><input type="date" id="fFrom"></div>
       <div class="field" style="margin-bottom:0"><label>Hasta</label><input type="date" id="fTo"></div>
@@ -51,6 +54,17 @@
       <div class="field" style="margin-bottom:0"><label>Deporte</label>
         <select id="fDeporte"><option value="todos">Todos</option><option value="futbol">Fútbol</option><option value="beisbol">Béisbol / Softbol</option><option value="otro">Otro / normal</option></select>
       </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span class="footnote" style="margin-right:2px">Atajos:</span>
+      <button type="button" class="btn sec sm" data-preset="todos,todos,todos">Todos</button>
+      <button type="button" class="btn sec sm" data-preset="semana,todos,todos">Entre semana</button>
+      <button type="button" class="btn sec sm" data-preset="finde,todos,todos">Fin de semana</button>
+      <button type="button" class="btn sec sm" data-preset="todos,con,todos">Con partido</button>
+      <button type="button" class="btn sec sm" data-preset="semana,con,todos">Entre semana con partido</button>
+      <button type="button" class="btn sec sm" data-preset="finde,con,todos">Fin de semana con partido</button>
+      <button type="button" class="btn sec sm" data-preset="todos,todos,futbol">Fútbol</button>
+      <button type="button" class="btn sec sm" data-preset="todos,todos,beisbol">Béisbol</button>
     </div>
   </div>
 
@@ -105,6 +119,42 @@
         <div class="scroll"><table id="tblPares"><thead><tr><th colspan="2">Par de productos</th><th class="num">Juntos</th><th class="num">Lift</th></tr></thead><tbody></tbody></table></div>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px" id="comboCards"></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-comparativa">
+    <h2 class="section-title" style="margin-top:20px">Comparativa</h2>
+    <p class="footnote" style="margin-top:6px">Promedios por segmento y por periodo, calculados sobre el rango de fechas de arriba (sin importar los filtros de tipo de día / partido / deporte, porque aquí es donde se comparan entre sí).</p>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Entre semana vs. fin de semana</h3>
+    <div class="card">
+      <div class="scroll"><table id="tblCompDiaTipo"><thead><tr><th>Segmento</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Venta prom./día</th><th class="num">Utilidad prom./día</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por deporte</h3>
+    <div class="card">
+      <div class="scroll"><table id="tblCompDeporte"><thead><tr><th>Deporte</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Venta prom./día</th><th class="num">Utilidad prom./día</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por mes</h3>
+    <div class="card">
+      <div class="scroll"><table id="tblCompMes"><thead><tr><th>Mes</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Utilidad</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por año</h3>
+    <div class="card">
+      <div class="scroll"><table id="tblCompAnio"><thead><tr><th>Año</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Utilidad</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-compras">
+    <h2 class="section-title" style="margin-top:20px">Lista de compras sugerida</h2>
+    <p class="footnote" style="margin-top:6px">Se calcula con el consumo promedio diario del periodo filtrado y la última existencia capturada de cada producto (conteo físico si existe, si no el teórico). Ajusta los días de cobertura según qué tan seguido compras.</p>
+    <div class="card noprint" style="margin-top:14px">
+      <div class="field" style="margin-bottom:0;max-width:220px"><label>Días de cobertura deseados</label><input type="number" id="coberturaDias" value="7" min="1"></div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="scroll"><table id="tblCompras"><thead><tr><th>Producto</th><th class="num">Venta/día prom.</th><th class="num">Existencia actual</th><th class="num">Cobertura actual</th><th class="num">Sugerido comprar</th></tr></thead><tbody></tbody></table></div>
     </div>
   </div>
 
@@ -228,10 +278,20 @@ document.getElementById('tabbar').addEventListener('click', (e) => {
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + btn.dataset.tab));
 });
 
+let IS_ADMIN = false;
+
 async function init() {
-  ME = await requireRole(['admin']);
+  ME = await requireRole(['operador', 'admin']);
   if (!ME) return;
+  IS_ADMIN = ME.role === 'admin';
   document.getElementById('whoName').textContent = ME.full_name || ME.email;
+  const pill = document.getElementById('rolePill');
+  pill.textContent = IS_ADMIN ? 'ADMIN' : 'OPERADOR';
+  pill.classList.toggle('admin', IS_ADMIN);
+
+  if (!IS_ADMIN) {
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+  }
 
   const today = new Date();
   const from = new Date(today); from.setDate(from.getDate() - 30);
@@ -239,13 +299,20 @@ async function init() {
   document.getElementById('fFrom').value = from.toISOString().slice(0, 10);
 
   document.getElementById('btnFilter').addEventListener('click', loadAll);
-  document.getElementById('formNewProduct').addEventListener('submit', addProduct);
+  if (IS_ADMIN) document.getElementById('formNewProduct').addEventListener('submit', addProduct);
   ['fTipoDia', 'fTipoPartido', 'fDeporte'].forEach(id =>
     document.getElementById(id).addEventListener('change', applyFilters));
+  document.querySelectorAll('[data-preset]').forEach(btn => btn.addEventListener('click', () => {
+    const [dia, partido, deporte] = btn.dataset.preset.split(',');
+    document.getElementById('fTipoDia').value = dia;
+    document.getElementById('fTipoPartido').value = partido;
+    document.getElementById('fDeporte').value = deporte;
+    applyFilters();
+  }));
+  document.getElementById('coberturaDias').addEventListener('input', renderCompras);
 
   await loadAll();
-  await loadCatalogFull();
-  await loadUsers();
+  if (IS_ADMIN) { await loadCatalogFull(); await loadUsers(); }
 }
 
 async function loadAll() {
@@ -262,13 +329,14 @@ async function loadAll() {
   ALL_DAYS = days;
   const dayIds = ALL_DAYS.map(d => d.id);
 
-  const { data: products } = await supabase.from('products').select('id, name, category, cost_price, sell_price, active');
+  const { data: products } = await supabase.from('products_view').select('id, name, category, cost_price, sell_price, active');
   PRODUCTS = products || [];
 
   if (!dayIds.length) {
     ALL_TICKETS = []; ALL_ITEMS = []; ALL_GAMES = []; ALL_INV = [];
     gmsg('warn', 'No hay días capturados en ese rango.');
     applyFilters();
+    renderComparativa();
     return;
   }
 
@@ -293,6 +361,7 @@ async function loadAll() {
   ALL_INV = invc || [];
 
   applyFilters();
+  renderComparativa();
 }
 
 function isWeekend(dateStr) {
@@ -344,6 +413,7 @@ function renderAll() {
   renderInventario();
   renderEstacionamiento();
   renderDaysTable();
+  renderCompras();
 }
 
 function renderResumen() {
@@ -683,6 +753,112 @@ function renderDaysTable() {
     return `<tr><td>${d.date}</td><td>${d.sport || '—'}</td><td class="num">${o.n}</td><td class="num">${money(o.v)}</td>
       <td><span class="chip ${d.status}">${d.status}</span></td><td>${d.profiles ? d.profiles.full_name || '—' : '—'}</td></tr>`;
   }).join('') || '<tr><td colspan="6">Sin días en el periodo.</td></tr>';
+}
+
+// ---------------- comparativa ----------------
+function statsForDays(dayIds) {
+  const set = new Set(dayIds);
+  const tks = ALL_TICKETS.filter(t => set.has(t.sale_day_id));
+  const tkIdSet = new Set(tks.map(t => t.id));
+  const items = ALL_ITEMS.filter(it => tkIdSet.has(it.ticket_id));
+  const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
+  const venta = tks.reduce((s, t) => s + Number(t.amount), 0);
+  let costo = 0, ventaConCosto = 0;
+  items.forEach(it => {
+    const p = prodById.get(it.product_id);
+    if (p && p.cost_price != null) { costo += p.cost_price * it.qty; ventaConCosto += p.sell_price * it.qty; }
+  });
+  const utilidad = ventaConCosto - costo;
+  return { dias: dayIds.length, tickets: tks.length, venta, utilidad: ventaConCosto ? utilidad : null, ticketProm: tks.length ? venta / tks.length : null };
+}
+
+function renderComparativa() {
+  const gamesByDay = new Map();
+  ALL_GAMES.forEach(g => gamesByDay.set(g.sale_day_id, true));
+
+  const semana = ALL_DAYS.filter(d => !isWeekend(d.date)).map(d => d.id);
+  const finde = ALL_DAYS.filter(d => isWeekend(d.date)).map(d => d.id);
+  const rowsTipo = [['Entre semana', semana], ['Fin de semana', finde]];
+  document.querySelector('#tblCompDiaTipo tbody').innerHTML = rowsTipo.map(([label, ids]) => {
+    const s = statsForDays(ids);
+    return `<tr><td>${label}</td><td class="num">${s.dias}</td><td class="num">${money(s.venta)}</td>
+      <td class="num">${s.dias ? money(s.venta / s.dias) : '—'}</td>
+      <td class="num">${s.utilidad != null && s.dias ? moneyD(s.utilidad / s.dias) : '—'}</td>
+      <td class="num">${s.ticketProm != null ? moneyD(s.ticketProm) : '—'}</td></tr>`;
+  }).join('');
+
+  const sports = { futbol: 'Fútbol', beisbol: 'Béisbol / Softbol', otro: 'Otro / normal' };
+  document.querySelector('#tblCompDeporte tbody').innerHTML = Object.entries(sports).map(([key, label]) => {
+    const ids = ALL_DAYS.filter(d => (d.sport || 'otro') === key).map(d => d.id);
+    const s = statsForDays(ids);
+    return `<tr><td>${label}</td><td class="num">${s.dias}</td><td class="num">${money(s.venta)}</td>
+      <td class="num">${s.dias ? money(s.venta / s.dias) : '—'}</td>
+      <td class="num">${s.utilidad != null && s.dias ? moneyD(s.utilidad / s.dias) : '—'}</td>
+      <td class="num">${s.ticketProm != null ? moneyD(s.ticketProm) : '—'}</td></tr>`;
+  }).join('');
+
+  const byMonth = new Map();
+  ALL_DAYS.forEach(d => { const k = d.date.slice(0, 7); if (!byMonth.has(k)) byMonth.set(k, []); byMonth.get(k).push(d.id); });
+  const mesesRows = [...byMonth.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  document.querySelector('#tblCompMes tbody').innerHTML = mesesRows.map(([mes, ids]) => {
+    const s = statsForDays(ids);
+    return `<tr><td>${mes}</td><td class="num">${s.dias}</td><td class="num">${money(s.venta)}</td>
+      <td class="num">${s.utilidad != null ? moneyD(s.utilidad) : '—'}</td>
+      <td class="num">${s.ticketProm != null ? moneyD(s.ticketProm) : '—'}</td></tr>`;
+  }).join('') || '<tr><td colspan="5">Sin días en el periodo.</td></tr>';
+
+  const byYear = new Map();
+  ALL_DAYS.forEach(d => { const k = d.date.slice(0, 4); if (!byYear.has(k)) byYear.set(k, []); byYear.get(k).push(d.id); });
+  const aniosRows = [...byYear.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  document.querySelector('#tblCompAnio tbody').innerHTML = aniosRows.map(([anio, ids]) => {
+    const s = statsForDays(ids);
+    return `<tr><td>${anio}</td><td class="num">${s.dias}</td><td class="num">${money(s.venta)}</td>
+      <td class="num">${s.utilidad != null ? moneyD(s.utilidad) : '—'}</td>
+      <td class="num">${s.ticketProm != null ? moneyD(s.ticketProm) : '—'}</td></tr>`;
+  }).join('') || '<tr><td colspan="5">Sin días en el periodo.</td></tr>';
+}
+
+// ---------------- lista de compras ----------------
+function renderCompras() {
+  const el = document.getElementById('coberturaDias');
+  if (!el) return;
+  const cobertura = parseInt(el.value) || 7;
+  const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
+
+  // consumo promedio diario (uds/dia) en el periodo filtrado
+  const consumo = new Map(); // product_id -> uds totales
+  ITEMS.forEach(it => { if (it.product_id) consumo.set(it.product_id, (consumo.get(it.product_id) || 0) + it.qty); });
+  const nDias = DAYS.length || 1;
+
+  // ultima existencia capturada por producto (el conteo mas reciente por fecha, dentro del periodo filtrado)
+  const dayById = new Map(DAYS.map(d => [d.id, d]));
+  const latest = new Map(); // product_id -> {fecha, valor}
+  INV_COUNTS.forEach(c => {
+    if (!c.product_id) return;
+    const day = dayById.get(c.sale_day_id);
+    if (!day) return;
+    const valor = c.physical_count != null ? c.physical_count
+      : (c.opening_stock != null && c.sold != null ? c.opening_stock - c.sold : null);
+    if (valor == null) return;
+    const prev = latest.get(c.product_id);
+    if (!prev || day.date > prev.fecha) latest.set(c.product_id, { fecha: day.date, valor });
+  });
+
+  const rows = [...consumo.keys()].map(pid => {
+    const p = prodById.get(pid);
+    const udsDia = consumo.get(pid) / nDias;
+    const exist = latest.has(pid) ? latest.get(pid).valor : null;
+    const coberturaActual = (exist != null && udsDia > 0) ? exist / udsDia : null;
+    const sugerido = (exist != null) ? Math.max(0, Math.ceil(udsDia * cobertura - exist)) : null;
+    return { nombre: p ? p.name : '?', udsDia, exist, coberturaActual, sugerido };
+  }).sort((a, b) => (a.coberturaActual ?? 999) - (b.coberturaActual ?? 999));
+
+  document.querySelector('#tblCompras tbody').innerHTML = rows.map(r => `
+    <tr><td>${r.nombre}</td><td class="num">${r.udsDia.toFixed(1)}</td>
+      <td class="num">${r.exist ?? '—'}</td>
+      <td class="num ${r.coberturaActual != null && r.coberturaActual < 2 ? 'neg' : ''}">${r.coberturaActual != null ? r.coberturaActual.toFixed(1) + ' días' : '—'}</td>
+      <td class="num ${r.sugerido ? 'pos' : ''}">${r.sugerido != null ? r.sugerido : 'sin dato de existencia'}</td></tr>
+  `).join('') || '<tr><td colspan="5">Sin ventas en el periodo filtrado.</td></tr>';
 }
 
 // ---------------- catálogo ----------------

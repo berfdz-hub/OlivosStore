@@ -175,3 +175,14 @@ td.num{font-family:'IBM Plex Mono'}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion: reduce){.spinner{animation:none}}
+
+/* exportar / imprimir: solo se ve la pestaña activa, sin nav ni filtros */
+@media print{
+  .noprint{display:none !important}
+  body{background:#fff}
+  .card{box-shadow:none;border:1px solid #ccc}
+  .pane{display:none !important}
+  .pane.on{display:block !important}
+  main{padding-top:0}
+  a[href]::after{content:""}
+}
