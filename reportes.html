@@ -211,7 +211,14 @@
     <div class="card" style="margin-top:14px">
       <label style="display:flex;align-items:center;gap:10px;font-weight:400;margin:0">
         <input type="checkbox" id="chkOperadoresVenCostos">
-        <span><b>Los operadores ven costos y utilidad en los reportes.</b><br><span class="footnote">Apágalo para que solo vean unidades y venta, sin costo de compra ni ganancia — igual que antes.</span></span>
+        <span><b>Los operadores ven costos y utilidad en los reportes.</b><br><span class="footnote">Apágalo para que solo vean unidades y venta, sin costo de compra ni ganancia.</span></span>
+      </label>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <label style="display:flex;align-items:center;gap:10px;font-weight:400;margin:0">
+        <input type="checkbox" id="chkOperadoresVenTodo">
+        <span><b>Los operadores ven el historial completo.</b><br><span class="footnote">Apágalo para que solo vean el día más reciente capturado, sin acceso a días anteriores.</span></span>
       </label>
     </div>
 
@@ -306,6 +313,14 @@ async function init() {
 
   if (!IS_ADMIN) {
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    const { data: settings } = await supabase.from('app_settings').select('operators_see_all_days').single();
+    if (settings && !settings.operators_see_all_days) {
+      const note = document.createElement('div');
+      note.className = 'msg warn noprint';
+      note.style.marginTop = '12px';
+      note.textContent = 'Tu cuenta solo puede ver el día más reciente capturado. Si necesitas ver días anteriores, pídele a un administrador que active "Los operadores ven el historial completo" en Usuarios.';
+      document.querySelector('main.wrap > .card').after(note);
+    }
   }
 
   const today = new Date();
@@ -927,16 +942,23 @@ async function addProduct(e) {
 
 // ---------------- usuarios ----------------
 async function loadUsers() {
-  const { data: settings } = await supabase.from('app_settings').select('operators_see_costs').single();
-  const chk = document.getElementById('chkOperadoresVenCostos');
-  if (settings) chk.checked = !!settings.operators_see_costs;
-  chk.onchange = async () => {
-    chk.disabled = true;
-    const { error } = await supabase.from('app_settings').update({ operators_see_costs: chk.checked }).eq('id', true);
-    chk.disabled = false;
-    if (error) { gmsg('err', 'No pude guardar el permiso: ' + error.message); chk.checked = !chk.checked; return; }
-    gmsg('ok', chk.checked ? 'Operadores ahora ven costos y utilidad.' : 'Operadores ya no ven costos ni utilidad.');
-  };
+  const { data: settings, error: sErr } = await supabase.from('app_settings').select('operators_see_costs, operators_see_all_days').single();
+  if (sErr) gmsg('err', 'No pude cargar los permisos (¿corriste supabase/permiso_operador_costos.sql?): ' + sErr.message);
+
+  function wireToggle(inputId, field, onLabel, offLabel) {
+    const chk = document.getElementById(inputId);
+    if (settings) chk.checked = !!settings[field];
+    chk.onchange = async () => {
+      chk.disabled = true;
+      const payload = {}; payload[field] = chk.checked;
+      const { error } = await supabase.from('app_settings').update(payload).eq('id', true);
+      chk.disabled = false;
+      if (error) { gmsg('err', 'No pude guardar el permiso: ' + error.message); chk.checked = !chk.checked; return; }
+      gmsg('ok', chk.checked ? onLabel : offLabel);
+    };
+  }
+  wireToggle('chkOperadoresVenCostos', 'operators_see_costs', 'Operadores ahora ven costos y utilidad.', 'Operadores ya no ven costos ni utilidad.');
+  wireToggle('chkOperadoresVenTodo', 'operators_see_all_days', 'Operadores ahora ven el historial completo.', 'Operadores ahora solo ven el día más reciente.');
 
   const { data, error } = await supabase.from('profiles').select('id, full_name, role, active').order('full_name');
   if (error) { gmsg('err', 'No pude cargar usuarios: ' + error.message); return; }
