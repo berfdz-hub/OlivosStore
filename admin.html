@@ -23,6 +23,8 @@
 <div class="tabbar" id="tabbar">
   <button class="on" data-tab="resumen">Resumen</button>
   <button data-tab="productos">Productos</button>
+  <button data-tab="calor">Mapa de calor</button>
+  <button data-tab="combos">Combos</button>
   <button data-tab="inventario">Inventario</button>
   <button data-tab="estacionamiento">Estacionamiento</button>
   <button data-tab="catalogo">Catálogo</button>
@@ -58,6 +60,27 @@
     <h2 class="section-title" style="margin-top:20px">Productos del periodo</h2>
     <div class="card" style="margin-top:14px">
       <div class="scroll"><table id="tblProdRank"><thead><tr><th>Producto</th><th class="num">Uds.</th><th class="num">Tickets</th><th class="num">Venta</th><th class="num">Costo</th><th class="num">Margen</th><th class="num">Utilidad</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 4px">Venta por categoría</h3>
+    <div class="card" style="margin-top:10px" id="catbars"></div>
+  </div>
+
+  <div class="pane" id="pane-calor">
+    <h2 class="section-title" style="margin-top:20px">Mapa de calor · producto × hora</h2>
+    <p class="footnote" style="margin-top:6px">Top 15 productos por unidades vendidas en el periodo, distribuidos por hora del día. Más oscuro = más unidades esa hora.</p>
+    <div class="card" style="margin-top:14px">
+      <div class="scroll" id="heatmap"></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-combos">
+    <h2 class="section-title" style="margin-top:20px">Canasta y combos sugeridos</h2>
+    <p class="footnote" style="margin-top:6px">Pares de productos que aparecen juntos en el mismo ticket más de lo que el azar explicaría (lift &gt; 1). Agua y Coca-cola se excluyen de las sugerencias de combo porque acompañan casi cualquier cosa.</p>
+    <div class="grid grid2" style="margin-top:14px;align-items:start">
+      <div class="card">
+        <div class="scroll"><table id="tblPares"><thead><tr><th colspan="2">Par de productos</th><th class="num">Juntos</th><th class="num">Lift</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px" id="comboCards"></div>
     </div>
   </div>
 
@@ -196,6 +219,8 @@ async function loadAll() {
 function renderAll() {
   renderResumen();
   renderProductos();
+  renderCalor();
+  renderCombos();
   renderInventario();
   renderEstacionamiento();
   renderDaysTable();
@@ -252,7 +277,7 @@ function renderProductos() {
     const costo = (p && p.cost_price != null) ? p.cost_price * a.uds : null;
     const util = costo != null ? venta - costo : null;
     const margen = (util != null && venta) ? (util / venta * 100) : null;
-    return { name: a.name, uds: a.uds, tks: a.tks.size, venta, costo, util, margen };
+    return { name: a.name, uds: a.uds, tks: a.tks.size, venta, costo, util, margen, category: p ? (p.category || 'Otro') : 'Sin catálogo' };
   }).sort((x, y) => y.uds - x.uds);
 
   document.querySelector('#tblProdRank tbody').innerHTML = rows.map(r => `
@@ -262,6 +287,121 @@ function renderProductos() {
       <td class="num">${r.margen != null ? r.margen.toFixed(1) + '%' : '—'}</td>
       <td class="num ${r.util != null ? 'pos' : ''}">${r.util != null ? moneyD(r.util) : '—'}</td></tr>
   `).join('') || '<tr><td colspan="7">Sin datos en el periodo.</td></tr>';
+
+  const catColors = ['var(--brand)', 'var(--amber)', 'var(--clay)', 'var(--blue)', 'var(--muted)'];
+  const cats = new Map();
+  rows.forEach(r => {
+    if (!cats.has(r.category)) cats.set(r.category, { venta: 0, uds: 0 });
+    const c = cats.get(r.category);
+    c.venta += r.venta || 0; c.uds += r.uds;
+  });
+  const catRows = [...cats.entries()].sort((a, b) => b[1].venta - a[1].venta);
+  const maxVenta = Math.max(1, ...catRows.map(([, c]) => c.venta));
+  document.getElementById('catbars').innerHTML = catRows.length ? catRows.map(([name, c], i) => `
+    <div class="catbar-row">
+      <div>${name}</div>
+      <div class="catbar-track"><div class="catbar-fill" style="width:${Math.round(c.venta / maxVenta * 100)}%;background:${catColors[i % catColors.length]}"></div></div>
+      <div class="mono" style="text-align:right">${money(c.venta)}</div>
+    </div>`).join('') : '<p class="footnote">Sin datos en el periodo.</p>';
+}
+
+function catOf(productId, prodById) {
+  const p = productId ? prodById.get(productId) : null;
+  return p ? (p.category || 'Otro') : null;
+}
+
+function renderCalor() {
+  const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
+  const hourByTicket = new Map(TICKETS.map(t => [t.id, new Date(t.ts).getHours()]));
+
+  const totals = new Map(); // productId -> total uds
+  const byProdHour = new Map(); // productId -> {hour: uds}
+  ITEMS.forEach(it => {
+    if (!it.product_id) return;
+    const hour = hourByTicket.get(it.ticket_id);
+    if (hour == null) return;
+    totals.set(it.product_id, (totals.get(it.product_id) || 0) + it.qty);
+    if (!byProdHour.has(it.product_id)) byProdHour.set(it.product_id, {});
+    const h = byProdHour.get(it.product_id);
+    h[hour] = (h[hour] || 0) + it.qty;
+  });
+
+  const top = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15).map(([id]) => id);
+  if (!top.length) { document.getElementById('heatmap').innerHTML = '<p class="footnote">Sin datos en el periodo.</p>'; return; }
+
+  const hoursUsed = [...new Set(TICKETS.map(t => new Date(t.ts).getHours()))].sort((a, b) => a - b);
+  let max = 0;
+  top.forEach(id => hoursUsed.forEach(h => { const v = (byProdHour.get(id) || {})[h] || 0; if (v > max) max = v; }));
+
+  let html = '<table class="heat"><thead><tr><th class="p">Producto</th>' +
+    hoursUsed.map(h => `<th>${h}h</th>`).join('') + '<th>Total</th></tr></thead><tbody>';
+  top.forEach(id => {
+    const p = prodById.get(id);
+    const row = byProdHour.get(id) || {};
+    html += `<tr><td>${p ? p.name : '?'}</td>` + hoursUsed.map(h => {
+      const v = row[h] || 0;
+      if (!v) return `<td class="z">·</td>`;
+      const alpha = 0.22 + 0.78 * (v / max);
+      return `<td style="background:color-mix(in srgb, var(--brand) ${Math.round(alpha * 100)}%, var(--surface-2))" title="${v} uds a las ${h}h">${v}</td>`;
+    }).join('') + `<td style="background:none;color:var(--ink);font-weight:700;text-align:center">${totals.get(id)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('heatmap').innerHTML = html;
+}
+
+function renderCombos() {
+  const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
+  const byTicket = new Map();
+  ITEMS.forEach(it => {
+    if (!it.product_id) return;
+    if (!byTicket.has(it.ticket_id)) byTicket.set(it.ticket_id, new Set());
+    byTicket.get(it.ticket_id).add(it.product_id);
+  });
+  const baskets = [...byTicket.values()];
+  const N = baskets.length;
+  const sup = new Map(), pairs = new Map();
+  baskets.forEach(b => {
+    const arr = [...b];
+    arr.forEach(x => sup.set(x, (sup.get(x) || 0) + 1));
+    for (let i = 0; i < arr.length; i++) for (let j = i + 1; j < arr.length; j++) {
+      const [a, c] = [arr[i], arr[j]].sort();
+      const k = a + '||' + c;
+      pairs.set(k, (pairs.get(k) || 0) + 1);
+    }
+  });
+
+  const isAgua = id => { const p = prodById.get(id); return p && /agua|coca/i.test(p.name); };
+
+  const rows = [...pairs.entries()].map(([k, c]) => {
+    const [a, b] = k.split('||');
+    const lift = N ? (c / N) / ((sup.get(a) / N) * (sup.get(b) / N)) : 0;
+    return { a, b, c, lift };
+  }).sort((x, y) => y.c - x.c || y.lift - x.lift);
+
+  document.querySelector('#tblPares tbody').innerHTML = rows.slice(0, 15).map(r => {
+    const pa = prodById.get(r.a), pb = prodById.get(r.b);
+    return `<tr><td style="text-align:left">${pa ? pa.name : '?'}</td><td style="text-align:left">${pb ? pb.name : '?'}</td>
+      <td class="num">${r.c}</td><td class="num pos">${r.lift.toFixed(2)}×</td></tr>`;
+  }).join('') || '<tr><td colspan="4">No hay suficientes tickets con 2+ productos en el periodo.</td></tr>';
+
+  // combos sugeridos: pares sin agua/coca, con costo conocido en ambos, ordenados por lift*juntos
+  const candidatos = rows.filter(r => !isAgua(r.a) && !isAgua(r.b) && r.c >= 2).map(r => {
+    const pa = prodById.get(r.a), pb = prodById.get(r.b);
+    if (!pa || !pb || pa.cost_price == null || pb.cost_price == null) return null;
+    const lista = pa.sell_price + pb.sell_price;
+    const costo = pa.cost_price + pb.cost_price;
+    let precio = Math.round(lista * 0.9 / 5) * 5;
+    if (precio >= lista) precio = lista - 5;
+    let margen = (precio - costo) / precio * 100;
+    if (margen < 30 && precio < lista) { precio = lista; margen = (precio - costo) / precio * 100; }
+    return { pa, pb, juntos: r.c, lift: r.lift, lista, costo, precio, margen };
+  }).filter(Boolean).sort((x, y) => (y.lift * y.juntos) - (x.lift * x.juntos)).slice(0, 4);
+
+  document.getElementById('comboCards').innerHTML = candidatos.length ? candidatos.map(c => `
+    <div class="combo">
+      <h4>${c.pa.name} + ${c.pb.name} <span class="price">${money(c.precio)}</span></h4>
+      <div class="stats"><span>lista ${money(c.lista)}</span><span>margen ${c.margen.toFixed(0)}%</span><span>juntos ${c.juntos}× · lift ${c.lift.toFixed(1)}</span></div>
+    </div>`).join('') : '<p class="footnote">Todavía no hay suficientes datos para sugerir combos en este periodo.</p>';
 }
 
 function renderInventario() {
