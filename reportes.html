@@ -200,6 +200,14 @@
   <div class="pane" id="pane-usuarios">
     <h2 class="section-title" style="margin-top:20px">Usuarios</h2>
     <p class="footnote" style="margin-top:6px">Cambia el rol o desactiva una cuenta. Las cuentas nuevas se crean solas al registrarse (siempre como "operador").</p>
+
+    <div class="card" style="margin-top:14px">
+      <label style="display:flex;align-items:center;gap:10px;font-weight:400;margin:0">
+        <input type="checkbox" id="chkOperadoresVenCostos">
+        <span><b>Los operadores ven costos y utilidad en los reportes.</b><br><span class="footnote">Apágalo para que solo vean unidades y venta, sin costo de compra ni ganancia — igual que antes.</span></span>
+      </label>
+    </div>
+
     <div class="card" style="margin-top:14px">
       <div class="scroll"><table id="tblUsers"><thead><tr><th>Nombre</th><th>Rol</th><th>Activo</th><th></th></tr></thead><tbody></tbody></table></div>
     </div>
@@ -245,7 +253,7 @@
 
     <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:22px 0 6px">Cuentas y captura</h3>
     <div class="card">
-      <dl class="gloss-item"><dt>Operador</dt><dd>Cuenta para el personal que captura los datos del día (sube el CSV, anota los partidos y el conteo físico). No ve costos de compra ni utilidad.</dd></dl>
+      <dl class="gloss-item"><dt>Operador</dt><dd>Cuenta para el personal que captura los datos del día (sube el CSV, anota los partidos y el conteo físico) y puede ver los reportes. Si ve costos y utilidad o no depende de un interruptor que el admin controla en Usuarios.</dd></dl>
       <dl class="gloss-item"><dt>Admin</dt><dd>Cuenta con acceso completo: ve todos los reportes con costos y utilidad, edita el catálogo de productos, y administra quién es operador o admin.</dd></dl>
       <dl class="gloss-item"><dt>Día "borrador" / "enviado" / "revisado"</dt><dd>El estado de una captura: <b>borrador</b> apenas se está armando, <b>enviado</b> ya se guardó completo, <b>revisado</b> el admin ya lo validó (este último se marca manualmente si lo necesitas más adelante).</dd></dl>
     </div>
@@ -912,6 +920,17 @@ async function addProduct(e) {
 
 // ---------------- usuarios ----------------
 async function loadUsers() {
+  const { data: settings } = await supabase.from('app_settings').select('operators_see_costs').single();
+  const chk = document.getElementById('chkOperadoresVenCostos');
+  if (settings) chk.checked = !!settings.operators_see_costs;
+  chk.onchange = async () => {
+    chk.disabled = true;
+    const { error } = await supabase.from('app_settings').update({ operators_see_costs: chk.checked }).eq('id', true);
+    chk.disabled = false;
+    if (error) { gmsg('err', 'No pude guardar el permiso: ' + error.message); chk.checked = !chk.checked; return; }
+    gmsg('ok', chk.checked ? 'Operadores ahora ven costos y utilidad.' : 'Operadores ya no ven costos ni utilidad.');
+  };
+
   const { data, error } = await supabase.from('profiles').select('id, full_name, role, active').order('full_name');
   if (error) { gmsg('err', 'No pude cargar usuarios: ' + error.message); return; }
   document.querySelector('#tblUsers tbody').innerHTML = data.map(u => `
