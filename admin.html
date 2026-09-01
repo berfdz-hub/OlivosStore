@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin · Tienda Olivos</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span> Tienda Olivos</div>
+    <div class="who">
+      <span id="whoName"></span>
+      <span class="role-pill admin">ADMIN</span>
+      <a href="operador.html" class="btn-ghost" style="text-decoration:none">Capturar día</a>
+      <button class="btn-ghost" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+</div>
+
+<div class="tabbar" id="tabbar">
+  <button class="on" data-tab="resumen">Resumen</button>
+  <button data-tab="productos">Productos</button>
+  <button data-tab="inventario">Inventario</button>
+  <button data-tab="estacionamiento">Estacionamiento</button>
+  <button data-tab="catalogo">Catálogo</button>
+  <button data-tab="usuarios">Usuarios</button>
+</div>
+
+<main class="wrap">
+
+  <div class="card" style="margin-bottom:0">
+    <div class="grid grid3">
+      <div class="field" style="margin-bottom:0"><label>Desde</label><input type="date" id="fFrom"></div>
+      <div class="field" style="margin-bottom:0"><label>Hasta</label><input type="date" id="fTo"></div>
+      <div style="display:flex;align-items:flex-end"><button class="btn" id="btnFilter" style="width:100%">Aplicar rango</button></div>
+    </div>
+  </div>
+
+  <div id="globalMsg"></div>
+
+  <div class="pane on" id="pane-resumen">
+    <h2 class="section-title" style="margin-top:20px">Resumen del periodo</h2>
+    <div class="kpis" id="kpis" style="margin-top:14px"></div>
+    <div class="card" style="margin-top:16px">
+      <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:12px">Venta por hora (acumulado del periodo)</h3>
+      <div id="barchart" style="display:flex;align-items:flex-end;gap:8px;height:180px;border-bottom:1px solid var(--line)"></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:12px">Días en el periodo</h3>
+      <div class="scroll"><table id="tblDaysAdmin"><thead><tr><th>Fecha</th><th>Deporte</th><th class="num">Tickets</th><th class="num">Venta</th><th>Estado</th><th>Capturado por</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-productos">
+    <h2 class="section-title" style="margin-top:20px">Productos del periodo</h2>
+    <div class="card" style="margin-top:14px">
+      <div class="scroll"><table id="tblProdRank"><thead><tr><th>Producto</th><th class="num">Uds.</th><th class="num">Tickets</th><th class="num">Venta</th><th class="num">Costo</th><th class="num">Margen</th><th class="num">Utilidad</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-inventario">
+    <h2 class="section-title" style="margin-top:20px">Variación de inventario</h2>
+    <p class="footnote" style="margin-top:6px">Solo aparecen productos con conteo físico capturado en el periodo.</p>
+    <div class="card" style="margin-top:14px">
+      <div class="scroll"><table id="tblMerma"><thead><tr><th>Fecha</th><th>Producto</th><th class="num">Vendido</th><th class="num">Físico</th><th class="num">Diferencia</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-estacionamiento">
+    <h2 class="section-title" style="margin-top:20px">Estacionamiento por partido</h2>
+    <div class="card" style="margin-top:14px">
+      <div class="scroll"><table id="tblParking"><thead><tr><th>Fecha</th><th>Hora</th><th class="num">Autos (lote)</th><th class="num">Autos cobrados</th><th class="num">Ingreso</th><th class="num">Venta ventana ±</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-catalogo">
+    <h2 class="section-title" style="margin-top:20px">Catálogo de productos</h2>
+    <p class="footnote" style="margin-top:6px">Aquí se define el costo de compra y precio de venta que usan todos los reportes.</p>
+    <div class="card" style="margin-top:14px">
+      <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin-bottom:10px">Agregar producto</h3>
+      <form id="formNewProduct" class="grid grid4">
+        <div class="field" style="margin-bottom:0"><label>Nombre</label><input type="text" id="npName" required></div>
+        <div class="field" style="margin-bottom:0"><label>Categoría</label>
+          <select id="npCat"><option>Bebida</option><option>Comida preparada</option><option>Botana salada</option><option>Pan dulce/Dulce</option><option>Otro</option></select>
+        </div>
+        <div class="field" style="margin-bottom:0"><label>Costo compra</label><input type="number" step="0.01" id="npCost"></div>
+        <div class="field" style="margin-bottom:0"><label>Precio venta</label><input type="number" step="0.01" id="npPrice" required></div>
+        <div style="grid-column:1/-1"><button class="btn sm" type="submit">Agregar</button></div>
+      </form>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="scroll"><table id="tblCatalog"><thead><tr><th>Producto</th><th>Categoría</th><th class="num">Costo</th><th class="num">Precio</th><th>Activo</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-usuarios">
+    <h2 class="section-title" style="margin-top:20px">Usuarios</h2>
+    <p class="footnote" style="margin-top:6px">Cambia el rol o desactiva una cuenta. Las cuentas nuevas se crean solas al registrarse (siempre como "operador").</p>
+    <div class="card" style="margin-top:14px">
+      <div class="scroll"><table id="tblUsers"><thead><tr><th>Nombre</th><th>Rol</th><th>Activo</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+</main>
+
+<script type="module">
+import { supabase } from "./lib/supabase-client.js";
+import { requireRole, signOut } from "./lib/auth.js";
+
+window.doLogout = signOut;
+
+const money = n => '$' + Number(n || 0).toLocaleString('es-MX', { maximumFractionDigits: 0 });
+const moneyD = n => '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const gmsg = (t, h) => document.getElementById('globalMsg').innerHTML = `<div class="msg ${t}">${h}</div>`;
+
+let ME = null;
+let RANGE = { from: null, to: null };
+let DAYS = [], TICKETS = [], ITEMS = [], PRODUCTS = [], GAMES = [], INV_COUNTS = [];
+
+document.getElementById('tabbar').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-tab]');
+  if (!btn) return;
+  document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('on', b === btn));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + btn.dataset.tab));
+});
+
+async function init() {
+  ME = await requireRole(['admin']);
+  if (!ME) return;
+  document.getElementById('whoName').textContent = ME.full_name || ME.email;
+
+  const today = new Date();
+  const from = new Date(today); from.setDate(from.getDate() - 30);
+  document.getElementById('fTo').value = today.toISOString().slice(0, 10);
+  document.getElementById('fFrom').value = from.toISOString().slice(0, 10);
+
+  document.getElementById('btnFilter').addEventListener('click', loadAll);
+  document.getElementById('formNewProduct').addEventListener('submit', addProduct);
+
+  await loadAll();
+  await loadCatalogFull();
+  await loadUsers();
+}
+
+async function loadAll() {
+  RANGE.from = document.getElementById('fFrom').value;
+  RANGE.to = document.getElementById('fTo').value;
+  gmsg('ok', 'Cargando datos del periodo...');
+
+  const { data: days, error: dErr } = await supabase
+    .from('sale_days')
+    .select('id, date, sport, status, created_by, profiles(full_name)')
+    .gte('date', RANGE.from).lte('date', RANGE.to)
+    .order('date', { ascending: false });
+  if (dErr) { gmsg('err', 'Error cargando días: ' + dErr.message); return; }
+  DAYS = days;
+  const dayIds = DAYS.map(d => d.id);
+
+  const { data: products } = await supabase.from('products').select('id, name, category, cost_price, sell_price, active');
+  PRODUCTS = products || [];
+
+  if (!dayIds.length) {
+    TICKETS = []; ITEMS = []; GAMES = []; INV_COUNTS = [];
+    gmsg('warn', 'No hay días capturados en ese rango.');
+    renderAll();
+    return;
+  }
+
+  const { data: tickets } = await supabase.from('tickets').select('id, sale_day_id, ts, amount, payment_type').in('sale_day_id', dayIds);
+  TICKETS = tickets || [];
+  const ticketIds = TICKETS.map(t => t.id);
+
+  ITEMS = [];
+  if (ticketIds.length) {
+    const chunkSize = 500;
+    for (let i = 0; i < ticketIds.length; i += chunkSize) {
+      const chunk = ticketIds.slice(i, i + chunkSize);
+      const { data } = await supabase.from('ticket_items').select('id, ticket_id, product_id, product_name_raw, qty').in('ticket_id', chunk);
+      if (data) ITEMS.push(...data);
+    }
+  }
+
+  const { data: games } = await supabase.from('games').select('id, sale_day_id, start_time, cars_parked, cars_charged, parking_rate').in('sale_day_id', dayIds);
+  GAMES = games || [];
+
+  const { data: invc } = await supabase.from('inventory_counts').select('id, sale_day_id, product_id, opening_stock, sold, physical_count, note').in('sale_day_id', dayIds);
+  INV_COUNTS = invc || [];
+
+  gmsg('ok', `${DAYS.length} día(s), ${TICKETS.length} tickets cargados.`);
+  renderAll();
+}
+
+function renderAll() {
+  renderResumen();
+  renderProductos();
+  renderInventario();
+  renderEstacionamiento();
+  renderDaysTable();
+}
+
+function renderResumen() {
+  const venta = TICKETS.reduce((s, t) => s + Number(t.amount), 0);
+  const n = TICKETS.length;
+  const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
+  let costoTotal = 0, ventaConCosto = 0;
+  ITEMS.forEach(it => {
+    const p = prodById.get(it.product_id);
+    if (p && p.cost_price != null) { costoTotal += p.cost_price * it.qty; ventaConCosto += p.sell_price * it.qty; }
+  });
+  const utilidad = ventaConCosto - costoTotal;
+  const margen = ventaConCosto ? (utilidad / ventaConCosto * 100) : null;
+  const uds = ITEMS.reduce((s, it) => s + it.qty, 0);
+
+  const kpis = [
+    ['Venta total', money(venta)],
+    ['Utilidad (costo conocido)', margen != null ? moneyD(utilidad) : '—'],
+    ['Margen', margen != null ? margen.toFixed(1) + '%' : '—'],
+    ['Tickets', n],
+    ['Ticket promedio', n ? moneyD(venta / n) : '—'],
+    ['Unidades / ticket', n ? (uds / n).toFixed(2) : '—'],
+    ['Días capturados', DAYS.length],
+  ];
+  document.getElementById('kpis').innerHTML = kpis.map(([l, v]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join('');
+
+  const byHour = new Array(24).fill(0);
+  TICKETS.forEach(t => { byHour[new Date(t.ts).getHours()] += Number(t.amount); });
+  const used = byHour.map((v, h) => ({ h, v })).filter(x => x.v > 0);
+  const max = Math.max(1, ...used.map(x => x.v));
+  document.getElementById('barchart').innerHTML = used.map(x => `
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+      <div class="mono" style="font-size:10px;color:var(--ink-2);margin-bottom:4px">${money(x.v)}</div>
+      <div style="width:100%;max-width:34px;border-radius:4px 4px 2px 2px;background:var(--brand);height:${Math.round(x.v / max * 100)}%" title="${x.h}:00"></div>
+      <div class="mono" style="font-size:10.5px;color:var(--muted);margin-top:6px">${x.h}h</div>
+    </div>`).join('') || '<p class="footnote">Sin ventas en el periodo.</p>';
+}
+
+function renderProductos() {
+  const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
+  const agg = new Map();
+  ITEMS.forEach(it => {
+    const key = it.product_id || ('__raw__' + it.product_name_raw);
+    if (!agg.has(key)) agg.set(key, { uds: 0, tks: new Set(), name: it.product_id ? (prodById.get(it.product_id)?.name || '?') : it.product_name_raw + ' (sin catálogo)', product_id: it.product_id });
+    const a = agg.get(key);
+    a.uds += it.qty; a.tks.add(it.ticket_id);
+  });
+  const rows = [...agg.values()].map(a => {
+    const p = a.product_id ? prodById.get(a.product_id) : null;
+    const venta = p ? p.sell_price * a.uds : null;
+    const costo = (p && p.cost_price != null) ? p.cost_price * a.uds : null;
+    const util = costo != null ? venta - costo : null;
+    const margen = (util != null && venta) ? (util / venta * 100) : null;
+    return { name: a.name, uds: a.uds, tks: a.tks.size, venta, costo, util, margen };
+  }).sort((x, y) => y.uds - x.uds);
+
+  document.querySelector('#tblProdRank tbody').innerHTML = rows.map(r => `
+    <tr><td>${r.name}</td><td class="num">${r.uds}</td><td class="num">${r.tks}</td>
+      <td class="num">${r.venta != null ? money(r.venta) : '—'}</td>
+      <td class="num">${r.costo != null ? money(r.costo) : '—'}</td>
+      <td class="num">${r.margen != null ? r.margen.toFixed(1) + '%' : '—'}</td>
+      <td class="num ${r.util != null ? 'pos' : ''}">${r.util != null ? moneyD(r.util) : '—'}</td></tr>
+  `).join('') || '<tr><td colspan="7">Sin datos en el periodo.</td></tr>';
+}
+
+function renderInventario() {
+  const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
+  const dayById = new Map(DAYS.map(d => [d.id, d]));
+  const rows = INV_COUNTS.filter(c => c.physical_count != null).map(c => {
+    const p = prodById.get(c.product_id);
+    const day = dayById.get(c.sale_day_id);
+    const dif = (c.sold != null && c.physical_count != null) ? c.physical_count - (c.sold != null ? 0 : 0) : null;
+    return { fecha: day ? day.date : '?', producto: p ? p.name : '?', vendido: c.sold, fisico: c.physical_count };
+  });
+  document.querySelector('#tblMerma tbody').innerHTML = rows.map(r => `
+    <tr><td>${r.fecha}</td><td>${r.producto}</td><td class="num">${r.vendido ?? '—'}</td><td class="num">${r.fisico}</td><td class="num">—</td></tr>
+  `).join('') || '<tr><td colspan="5">No hay conteos físicos capturados en el periodo.</td></tr>';
+}
+
+function renderEstacionamiento() {
+  const dayById = new Map(DAYS.map(d => [d.id, d]));
+  const ticketsByDay = new Map();
+  TICKETS.forEach(t => {
+    if (!ticketsByDay.has(t.sale_day_id)) ticketsByDay.set(t.sale_day_id, []);
+    ticketsByDay.get(t.sale_day_id).push(t);
+  });
+  const rows = GAMES.map(g => {
+    const day = dayById.get(g.sale_day_id);
+    const [hh, mm] = g.start_time.split(':').map(Number);
+    const ini = hh * 60 + mm, desde = ini - 60, hasta = ini + 150;
+    const dayTickets = ticketsByDay.get(g.sale_day_id) || [];
+    const ventana = dayTickets.filter(t => {
+      const d = new Date(t.ts); const min = d.getHours() * 60 + d.getMinutes();
+      return min >= desde && min < hasta;
+    });
+    const venta = ventana.reduce((s, t) => s + Number(t.amount), 0);
+    return {
+      fecha: day ? day.date : '?', hora: g.start_time,
+      autosLote: g.cars_parked, autosCobrados: g.cars_charged,
+      ingreso: g.cars_charged * g.parking_rate, venta
+    };
+  }).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  document.querySelector('#tblParking tbody').innerHTML = rows.map(r => `
+    <tr><td>${r.fecha}</td><td>${r.hora}</td><td class="num">${r.autosLote}</td><td class="num">${r.autosCobrados}</td>
+      <td class="num">${money(r.ingreso)}</td><td class="num">${money(r.venta)}</td></tr>
+  `).join('') || '<tr><td colspan="6">No hay partidos capturados en el periodo.</td></tr>';
+}
+
+function renderDaysTable() {
+  const ticketsByDay = new Map();
+  TICKETS.forEach(t => {
+    ticketsByDay.set(t.sale_day_id, (ticketsByDay.get(t.sale_day_id) || { n: 0, v: 0 }));
+    const o = ticketsByDay.get(t.sale_day_id); o.n++; o.v += Number(t.amount);
+  });
+  document.querySelector('#tblDaysAdmin tbody').innerHTML = DAYS.map(d => {
+    const o = ticketsByDay.get(d.id) || { n: 0, v: 0 };
+    return `<tr><td>${d.date}</td><td>${d.sport || '—'}</td><td class="num">${o.n}</td><td class="num">${money(o.v)}</td>
+      <td><span class="chip ${d.status}">${d.status}</span></td><td>${d.profiles ? d.profiles.full_name || '—' : '—'}</td></tr>`;
+  }).join('') || '<tr><td colspan="6">Sin días en el periodo.</td></tr>';
+}
+
+// ---------------- catálogo ----------------
+async function loadCatalogFull() {
+  const { data, error } = await supabase.from('products').select('*').order('name');
+  if (error) { gmsg('err', 'No pude cargar el catálogo: ' + error.message); return; }
+  renderCatalog(data);
+}
+
+function renderCatalog(rows) {
+  document.querySelector('#tblCatalog tbody').innerHTML = rows.map(p => `
+    <tr data-id="${p.id}">
+      <td><input type="text" class="edName" value="${p.name.replace(/"/g, '&quot;')}" style="min-width:160px"></td>
+      <td><input type="text" class="edCat" value="${p.category || ''}" style="min-width:120px"></td>
+      <td><input type="number" step="0.01" class="edCost" value="${p.cost_price ?? ''}" style="width:90px"></td>
+      <td><input type="number" step="0.01" class="edPrice" value="${p.sell_price ?? ''}" style="width:90px"></td>
+      <td><input type="checkbox" class="edActive" ${p.active ? 'checked' : ''}></td>
+      <td><button class="btn sm" type="button" onclick="window.__saveProduct('${p.id}', this)">Guardar</button></td>
+    </tr>`).join('');
+}
+
+window.__saveProduct = async (id, btn) => {
+  const tr = btn.closest('tr');
+  const payload = {
+    name: tr.querySelector('.edName').value.trim(),
+    category: tr.querySelector('.edCat').value.trim() || 'Otro',
+    cost_price: tr.querySelector('.edCost').value === '' ? null : parseFloat(tr.querySelector('.edCost').value),
+    sell_price: parseFloat(tr.querySelector('.edPrice').value),
+    active: tr.querySelector('.edActive').checked,
+  };
+  const { error } = await supabase.from('products').update(payload).eq('id', id);
+  if (error) { gmsg('err', 'No pude guardar el producto: ' + error.message); return; }
+  gmsg('ok', 'Producto actualizado.');
+  loadAll();
+};
+
+async function addProduct(e) {
+  e.preventDefault();
+  const payload = {
+    name: document.getElementById('npName').value.trim(),
+    category: document.getElementById('npCat').value,
+    cost_price: document.getElementById('npCost').value === '' ? null : parseFloat(document.getElementById('npCost').value),
+    sell_price: parseFloat(document.getElementById('npPrice').value),
+  };
+  const { error } = await supabase.from('products').insert(payload);
+  if (error) { gmsg('err', 'No pude agregar el producto: ' + error.message); return; }
+  document.getElementById('formNewProduct').reset();
+  gmsg('ok', 'Producto agregado.');
+  loadCatalogFull();
+}
+
+// ---------------- usuarios ----------------
+async function loadUsers() {
+  const { data, error } = await supabase.from('profiles').select('id, full_name, role, active').order('full_name');
+  if (error) { gmsg('err', 'No pude cargar usuarios: ' + error.message); return; }
+  document.querySelector('#tblUsers tbody').innerHTML = data.map(u => `
+    <tr data-id="${u.id}">
+      <td>${u.full_name || '(sin nombre)'}</td>
+      <td><select class="edRole">
+        <option value="operador" ${u.role === 'operador' ? 'selected' : ''}>Operador</option>
+        <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+      </select></td>
+      <td><input type="checkbox" class="edUActive" ${u.active ? 'checked' : ''}></td>
+      <td><button class="btn sm" type="button" onclick="window.__saveUser('${u.id}', this)">Guardar</button></td>
+    </tr>`).join('');
+}
+
+window.__saveUser = async (id, btn) => {
+  const tr = btn.closest('tr');
+  const role = tr.querySelector('.edRole').value;
+  const active = tr.querySelector('.edUActive').checked;
+  if (id === ME.id && role !== 'admin') {
+    if (!confirm('Te vas a quitar tu propio acceso de administrador. ¿Seguro?')) return;
+  }
+  const { error } = await supabase.from('profiles').update({ role, active }).eq('id', id);
+  if (error) { gmsg('err', 'No pude actualizar el usuario: ' + error.message); return; }
+  gmsg('ok', 'Usuario actualizado.');
+  loadUsers();
+};
+
+init();
+</script>
+</body>
+</html>

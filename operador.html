@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Captura · Tienda Olivos</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span> Tienda Olivos</div>
+    <div class="who">
+      <span id="whoName"></span>
+      <span class="role-pill" id="rolePill">OPERADOR</span>
+      <button class="btn-ghost" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+  <div class="eyebrow">Captura de datos</div>
+  <h2 class="section-title">Nuevo día de venta</h2>
+  <p class="footnote" style="margin-top:6px">Llena la fecha, los partidos, sube el CSV de recibos y (si tienes) el conteo físico de algunos productos. Al guardar, todo queda en la base de datos para los reportes del administrador.</p>
+
+  <div id="msgBox"></div>
+
+  <form id="formDay">
+    <div class="card">
+      <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:14px">Datos del día</h3>
+      <div class="grid grid3">
+        <div class="field">
+          <label>Fecha</label>
+          <input type="date" id="fDate" required>
+        </div>
+        <div class="field">
+          <label>Deporte</label>
+          <select id="fSport">
+            <option value="futbol">Fútbol</option>
+            <option value="beisbol">Béisbol / Softbol</option>
+            <option value="otro">Otro / día normal</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tarifa estacionamiento</label>
+          <input type="number" id="fRate" value="30" min="0">
+        </div>
+      </div>
+      <div class="field">
+        <label>Notas (opcional)</label>
+        <textarea id="fNotes" placeholder="Cualquier cosa rara del día que el admin deba saber..."></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:4px">Partidos y estacionamiento</h3>
+      <p class="footnote" style="margin-bottom:12px">Si un partido no tuvo estacionamiento, deja los autos en 0.</p>
+      <div id="games"></div>
+      <button type="button" class="btn sec sm" onclick="addGame()">+ Agregar partido</button>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:4px">Recibos del punto de venta</h3>
+      <p class="footnote" style="margin-bottom:12px">El CSV "receipts" exportado del POS.</p>
+      <input type="file" id="fCsv" accept=".csv,text/csv">
+      <div id="csvSummary"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:4px">Conteo físico de inventario (opcional)</h3>
+      <p class="footnote" style="margin-bottom:12px">Solo llena los productos que sí contaste al cierre. Los demás se dejan vacíos.</p>
+      <div class="scroll">
+        <table id="tblInv"><thead><tr><th>Producto</th><th style="width:140px">Conteo físico</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div class="row-actions">
+      <button class="btn" type="submit" id="btnSave">Guardar día</button>
+    </div>
+  </form>
+
+  <div class="eyebrow" style="margin-top:44px">Historial</div>
+  <h2 class="section-title">Días capturados recientemente</h2>
+  <div class="card" style="margin-top:16px">
+    <div class="scroll">
+      <table id="tblDays"><thead><tr><th>Fecha</th><th>Deporte</th><th class="num">Tickets</th><th class="num">Venta</th><th>Estado</th><th>Capturado por</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import { supabase } from "./lib/supabase-client.js";
+import { requireRole, signOut, getCurrentProfile } from "./lib/auth.js";
+import { parseReceipts } from "./lib/csv.js";
+
+window.doLogout = signOut;
+
+let CATALOG = [];
+let PARSED_TICKETS = null;
+
+function addGame(hora = '', ap = '', ac = '') {
+  const el = document.createElement('div');
+  el.className = 'grid grid3';
+  el.style.marginBottom = '10px';
+  el.innerHTML = `
+    <div class="field" style="margin-bottom:0"><label>Hora de inicio</label><input type="time" class="gHora" value="${hora}"></div>
+    <div class="field" style="margin-bottom:0"><label>Autos en el lote</label><input type="number" class="gAutosP" min="0" value="${ap}"></div>
+    <div class="field" style="margin-bottom:0"><label>Autos cobrados</label><input type="number" class="gAutosC" min="0" value="${ac}"></div>
+  `;
+  const wrap = document.createElement('div');
+  wrap.style.display = 'flex'; wrap.style.gap = '8px'; wrap.style.alignItems = 'flex-end'; wrap.style.marginBottom = '10px';
+  wrap.appendChild(el);
+  const rm = document.createElement('button');
+  rm.type = 'button'; rm.className = 'btn sec sm'; rm.textContent = 'Quitar';
+  rm.style.marginBottom = '0';
+  rm.onclick = () => wrap.remove();
+  wrap.appendChild(rm);
+  document.getElementById('games').appendChild(wrap);
+}
+window.addGame = addGame;
+
+function getGames() {
+  return [...document.getElementById('games').children].map(row => {
+    const hora = row.querySelector('.gHora').value;
+    const ap = parseInt(row.querySelector('.gAutosP').value) || 0;
+    const ac = parseInt(row.querySelector('.gAutosC').value) || 0;
+    return { hora, ap, ac };
+  }).filter(g => g.hora);
+}
+
+function msg(type, html) { document.getElementById('msgBox').innerHTML = `<div class="msg ${type}">${html}</div>`; }
+const money = n => '$' + Number(n).toLocaleString('es-MX', { maximumFractionDigits: 0 });
+
+async function init() {
+  const profile = await requireRole(['operador', 'admin']);
+  if (!profile) return;
+  document.getElementById('whoName').textContent = profile.full_name || profile.email;
+  if (profile.role === 'admin') {
+    const pill = document.getElementById('rolePill');
+    pill.textContent = 'ADMIN'; pill.classList.add('admin');
+  }
+
+  document.getElementById('fDate').value = new Date().toISOString().slice(0, 10);
+  addGame();
+
+  const { data: products, error } = await supabase
+    .from('products_view').select('id, name, category, sell_price').eq('active', true).order('name');
+  if (error) { msg('err', 'No pude cargar el catálogo de productos: ' + error.message); return; }
+  CATALOG = products;
+
+  const tbody = document.querySelector('#tblInv tbody');
+  tbody.innerHTML = CATALOG.map(p => `
+    <tr><td>${p.name}</td><td><input type="number" min="0" class="invCount" data-pid="${p.id}" style="width:110px"></td></tr>
+  `).join('');
+
+  document.getElementById('fCsv').addEventListener('change', onCsvChange);
+  document.getElementById('formDay').addEventListener('submit', onSubmit);
+
+  loadDays(profile);
+}
+
+function onCsvChange(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const { tickets, unmatched, descartados } = parseReceipts(reader.result, CATALOG);
+      PARSED_TICKETS = tickets;
+      const venta = tickets.reduce((s, t) => s + t.amount, 0);
+      let html = `<div class="msg ok"><b>${tickets.length}</b> tickets leídos, venta total <b>${money(venta)}</b>.`;
+      if (descartados) html += ` (${descartados} filas descartadas: reembolsos o sin fecha legible)`;
+      html += `</div>`;
+      if (unmatched.length) {
+        html += `<div class="msg warn"><b>${unmatched.length} producto(s) no están en el catálogo</b> — se guardan igual pero sin costo asociado. Avísale al admin para agregarlos:<br>${unmatched.join(', ')}</div>`;
+      }
+      document.getElementById('csvSummary').innerHTML = html;
+    } catch (err) {
+      PARSED_TICKETS = null;
+      document.getElementById('csvSummary').innerHTML = `<div class="msg err">${err.message}</div>`;
+    }
+  };
+  reader.readAsText(f, 'UTF-8');
+}
+
+async function onSubmit(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Guardando...';
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const date = document.getElementById('fDate').value;
+    const sport = document.getElementById('fSport').value;
+    const rate = parseFloat(document.getElementById('fRate').value) || 0;
+    const notes = document.getElementById('fNotes').value.trim();
+    const games = getGames();
+
+    const { data: day, error: dayErr } = await supabase.from('sale_days').insert({
+      date, sport, notes: notes || null, status: 'submitted', created_by: session.user.id
+    }).select().single();
+    if (dayErr) throw new Error('No pude crear el día (¿ya existe una captura para esa fecha?): ' + dayErr.message);
+
+    if (games.length) {
+      const gamesRows = games.map(g => ({
+        sale_day_id: day.id, start_time: g.hora, cars_parked: g.ap, cars_charged: g.ac, parking_rate: rate
+      }));
+      const { error: gErr } = await supabase.from('games').insert(gamesRows);
+      if (gErr) throw new Error('Error guardando partidos: ' + gErr.message);
+    }
+
+    if (PARSED_TICKETS && PARSED_TICKETS.length) {
+      const ticketRows = PARSED_TICKETS.map(t => ({
+        sale_day_id: day.id, ticket_number: t.ticket_number, ts: t.ts,
+        amount: t.amount, payment_type: t.payment_type, raw_description: t.raw_description
+      }));
+      const { data: insertedTickets, error: tErr } = await supabase.from('tickets').insert(ticketRows).select('id');
+      if (tErr) throw new Error('Error guardando tickets: ' + tErr.message);
+
+      const itemRows = [];
+      insertedTickets.forEach((row, i) => {
+        PARSED_TICKETS[i].items.forEach(it => {
+          itemRows.push({ ticket_id: row.id, product_id: it.product_id, product_name_raw: it.raw, qty: it.qty });
+        });
+      });
+      if (itemRows.length) {
+        const { error: iErr } = await supabase.from('ticket_items').insert(itemRows);
+        if (iErr) throw new Error('Error guardando productos de los tickets: ' + iErr.message);
+      }
+    }
+
+    const invRows = [...document.querySelectorAll('.invCount')]
+      .filter(inp => inp.value !== '')
+      .map(inp => ({ sale_day_id: day.id, product_id: inp.dataset.pid, physical_count: parseInt(inp.value) }));
+    if (invRows.length) {
+      const { error: invErr } = await supabase.from('inventory_counts').insert(invRows);
+      if (invErr) throw new Error('Error guardando conteo de inventario: ' + invErr.message);
+    }
+
+    msg('ok', `Día ${date} guardado correctamente.`);
+    document.getElementById('formDay').reset();
+    document.getElementById('fDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('games').innerHTML = ''; addGame();
+    document.getElementById('csvSummary').innerHTML = '';
+    PARSED_TICKETS = null;
+    const profile = await getCurrentProfile();
+    loadDays(profile);
+  } catch (err) {
+    msg('err', err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar día';
+  }
+}
+
+async function loadDays(profile) {
+  const { data, error } = await supabase
+    .from('sale_days')
+    .select('id, date, sport, status, created_by, profiles(full_name), tickets(amount)')
+    .order('date', { ascending: false })
+    .limit(20);
+  const tbody = document.querySelector('#tblDays tbody');
+  if (error) { tbody.innerHTML = `<tr><td colspan="6">No pude cargar el historial.</td></tr>`; return; }
+  if (!data.length) { tbody.innerHTML = `<tr><td colspan="6">Todavía no hay días capturados.</td></tr>`; return; }
+  tbody.innerHTML = data.map(d => {
+    const venta = (d.tickets || []).reduce((s, t) => s + Number(t.amount), 0);
+    return `<tr>
+      <td>${d.date}</td><td>${d.sport || '—'}</td>
+      <td class="num">${(d.tickets || []).length}</td><td class="num">${money(venta)}</td>
+      <td><span class="chip ${d.status}">${d.status}</span></td>
+      <td>${d.profiles ? d.profiles.full_name || '—' : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+init();
+</script>
+</body>
+</html>

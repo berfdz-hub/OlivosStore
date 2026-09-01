@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tienda Olivos</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="center-page">
+  <div class="auth-card">
+    <h1>Tienda Olivos</h1>
+    <p class="sub">Complejo Deportivo · captura y reportes de venta</p>
+
+    <div class="auth-toggle">
+      <button id="tabLogin" class="on" onclick="setMode('login')">Iniciar sesión</button>
+      <button id="tabSignup" onclick="setMode('signup')">Crear cuenta</button>
+    </div>
+
+    <div id="msgBox"></div>
+
+    <form id="formLogin">
+      <div class="field">
+        <label>Correo</label>
+        <input type="email" id="loginEmail" required autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="password" id="loginPassword" required autocomplete="current-password">
+      </div>
+      <button class="btn" type="submit" id="btnLogin" style="width:100%">Entrar</button>
+    </form>
+
+    <form id="formSignup" style="display:none">
+      <div class="field">
+        <label>Nombre completo</label>
+        <input type="text" id="suName" required autocomplete="name">
+      </div>
+      <div class="field">
+        <label>Correo</label>
+        <input type="email" id="suEmail" required autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="password" id="suPassword" required minlength="6" autocomplete="new-password">
+        <div class="hint">Mínimo 6 caracteres. Las cuentas nuevas entran como "operador" — un administrador puede darte más permisos después.</div>
+      </div>
+      <button class="btn" type="submit" id="btnSignup" style="width:100%">Crear cuenta</button>
+    </form>
+  </div>
+</div>
+
+<script type="module">
+import { supabase, CONFIGURED } from "./lib/supabase-client.js";
+import { getCurrentProfile } from "./lib/auth.js";
+
+if (!CONFIGURED) {
+  document.body.innerHTML = `<div style="max-width:520px;margin:80px auto;padding:0 20px;font:15px/1.5 system-ui,sans-serif;color:#3E4A42">
+    <h1 style="font:800 26px 'Big Shoulders Display',system-ui;color:#12201A;margin-bottom:8px">Falta configurar Supabase</h1>
+    <p>Abre <code>config.js</code> y pon ahí el <b>Project URL</b> y la <b>anon public key</b> de tu proyecto Supabase (Project Settings &rarr; API).</p>
+  </div>`;
+  throw new Error("Supabase no configurado");
+}
+
+const msgBox = document.getElementById('msgBox');
+function showMsg(type, text){ msgBox.innerHTML = `<div class="msg ${type}">${text}</div>`; }
+function clearMsg(){ msgBox.innerHTML = ''; }
+
+window.setMode = (mode) => {
+  clearMsg();
+  const isLogin = mode === 'login';
+  document.getElementById('tabLogin').classList.toggle('on', isLogin);
+  document.getElementById('tabSignup').classList.toggle('on', !isLogin);
+  document.getElementById('formLogin').style.display = isLogin ? 'block' : 'none';
+  document.getElementById('formSignup').style.display = isLogin ? 'none' : 'block';
+};
+
+// si ya hay sesión activa y válida, saltar directo al home según rol
+(async () => {
+  const params = new URLSearchParams(location.search);
+  if (params.get('inactive')) {
+    showMsg('warn', 'Tu cuenta está desactivada. Contacta a un administrador.');
+    return;
+  }
+  const profile = await getCurrentProfile();
+  if (profile) {
+    window.location.href = profile.role === 'admin' ? 'admin.html' : 'operador.html';
+  }
+})();
+
+document.getElementById('formLogin').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearMsg();
+  const btn = document.getElementById('btnLogin');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Entrando...';
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    showMsg('err', error.message === 'Invalid login credentials'
+      ? 'Correo o contraseña incorrectos.'
+      : error.message);
+    btn.disabled = false; btn.textContent = 'Entrar';
+    return;
+  }
+  const profile = await getCurrentProfile();
+  window.location.href = (profile && profile.role === 'admin') ? 'admin.html' : 'operador.html';
+});
+
+document.getElementById('formSignup').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearMsg();
+  const btn = document.getElementById('btnSignup');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Creando...';
+  const full_name = document.getElementById('suName').value.trim();
+  const email = document.getElementById('suEmail').value.trim();
+  const password = document.getElementById('suPassword').value;
+  const { data, error } = await supabase.auth.signUp({
+    email, password, options: { data: { full_name } }
+  });
+  btn.disabled = false; btn.textContent = 'Crear cuenta';
+  if (error) { showMsg('err', error.message); return; }
+  if (data.session) {
+    // confirmación de correo desactivada en el proyecto: ya hay sesión
+    window.location.href = 'operador.html';
+  } else {
+    setMode('login');
+    showMsg('ok', 'Cuenta creada. Revisa tu correo para confirmarla y luego inicia sesión.');
+  }
+});
+</script>
+</body>
+</html>

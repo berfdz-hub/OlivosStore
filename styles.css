@@ -1,0 +1,140 @@
+@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+:root{
+  --bg:#F7F7F2; --surface:#FFFFFF; --surface-2:#EEF2EA;
+  --ink:#12201A; --ink-2:#3E4A42; --muted:#6B776E; --line:#DCDFD4;
+  --brand:#1E5B3E; --brand-dark:#0F3325; --brand-soft:#DCEBE1;
+  --amber:#B9720E; --amber-soft:#F7E7CC;
+  --clay:#9E3527; --clay-soft:#F5DCD6;
+  --blue:#2F5E78; --blue-soft:#DCE8ED;
+  --shadow: 0 1px 2px rgba(15,51,37,.06), 0 8px 24px -12px rgba(15,51,37,.18);
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C1611; --surface:#131F19; --surface-2:#182620;
+    --ink:#EAF2EC; --ink-2:#C1CDC5; --muted:#8FA097; --line:#243128;
+    --brand:#57B78A; --brand-dark:#0F3325; --brand-soft:#1B3428;
+    --amber:#E7A548; --amber-soft:#3A2E17;
+    --clay:#E28C7C; --clay-soft:#3A211D;
+    --blue:#7FB2CB; --blue-soft:#1B2E36;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0C1611; --surface:#131F19; --surface-2:#182620;
+  --ink:#EAF2EC; --ink-2:#C1CDC5; --muted:#8FA097; --line:#243128;
+  --brand:#57B78A; --brand-dark:#0F3325; --brand-soft:#1B3428;
+  --amber:#E7A548; --amber-soft:#3A2E17;
+  --clay:#E28C7C; --clay-soft:#3A211D;
+  --blue:#7FB2CB; --blue-soft:#1B2E36;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.5);
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15.5px/1.5 'Source Sans 3',system-ui,sans-serif;font-variant-numeric:tabular-nums;min-height:100dvh}
+h1,h2,h3{font-family:'Big Shoulders Display',system-ui,sans-serif;font-weight:800;margin:0;text-wrap:balance}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+a{color:var(--brand)}
+button, input, select, textarea{font-family:inherit;font-size:15.5px}
+
+/* layout */
+.wrap{max-width:1080px;margin:0 auto;padding:0 18px}
+.center-page{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}
+
+/* topbar */
+.topbar{background:var(--brand-dark);color:#EAF4ED;padding:14px 0;position:sticky;top:0;z-index:30}
+.topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.topbar .brand{display:flex;align-items:center;gap:10px;font-family:'Big Shoulders Display';font-weight:800;font-size:19px;color:#fff}
+.topbar .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--brand)}
+.topbar .who{display:flex;align-items:center;gap:10px;font-size:13px;color:#B9D4C4}
+.role-pill{font:600 10.5px/1 'IBM Plex Mono';letter-spacing:.04em;text-transform:uppercase;padding:4px 8px;border-radius:5px;background:rgba(255,255,255,.12);color:#fff}
+.role-pill.admin{background:var(--amber)}
+.btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+.btn-ghost:hover{background:rgba(255,255,255,.1)}
+
+/* section nav (tabs across top of dashboards) */
+.tabbar{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:53px;z-index:20;scrollbar-width:none}
+.tabbar::-webkit-scrollbar{display:none}
+.tabbar button{flex:0 0 auto;background:none;border:none;padding:13px 16px;font:600 13.5px 'Source Sans 3';color:var(--muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.tabbar button.on{color:var(--brand);border-bottom-color:var(--brand)}
+.tabbar button:hover{color:var(--ink)}
+
+main{padding:24px 0 60px}
+.pane{display:none}
+.pane.on{display:block}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.card + .card{margin-top:16px}
+.grid{display:grid;gap:14px}
+.grid2{grid-template-columns:1fr 1fr}
+.grid3{grid-template-columns:repeat(3,1fr)}
+.grid4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:720px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+
+/* kpi tiles */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.kpi{background:var(--surface);padding:14px 16px}
+.kpi b{display:block;font-family:'Big Shoulders Display';font-size:24px;font-weight:800}
+.kpi span{display:block;font-size:11px;color:var(--muted);margin-top:3px}
+
+/* forms */
+label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
+.field{margin-bottom:14px}
+input[type=text], input[type=email], input[type=password], input[type=number],
+input[type=date], input[type=time], input[type=file], select, textarea{
+  width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:7px;
+  background:var(--surface);color:var(--ink);
+}
+input:focus, select:focus, textarea:focus{outline:2px solid var(--brand);outline-offset:1px}
+textarea{resize:vertical;min-height:70px}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}
+
+button.btn{font-weight:700;padding:11px 18px;border-radius:8px;border:1px solid var(--brand);background:var(--brand);color:#fff;cursor:pointer;font-size:14.5px}
+button.btn:hover{filter:brightness(1.08)}
+button.btn:disabled{opacity:.5;cursor:not-allowed}
+button.btn.sec{background:var(--surface);color:var(--brand)}
+button.btn.sm{padding:7px 12px;font-size:13px}
+button.btn.danger{background:var(--clay);border-color:var(--clay)}
+button.btn.danger.sec{background:var(--surface);color:var(--clay);border-color:var(--clay)}
+.row-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+
+/* tables */
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+thead th{font:600 10.5px 'IBM Plex Mono';color:var(--muted);text-transform:uppercase;letter-spacing:.03em;border-bottom:1.5px solid var(--ink)}
+tbody tr:hover{background:var(--surface-2)}
+td.num{font-family:'IBM Plex Mono'}
+.pos{color:var(--brand);font-weight:600}
+.neg{color:var(--clay);font-weight:600}
+
+/* status chips */
+.chip{display:inline-flex;align-items:center;gap:5px;font:600 11px 'IBM Plex Mono';padding:3px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.03em}
+.chip.draft{background:var(--amber-soft);color:var(--amber)}
+.chip.submitted{background:var(--blue-soft);color:var(--blue)}
+.chip.reviewed{background:var(--brand-soft);color:var(--brand)}
+
+/* messages */
+.msg{padding:12px 14px;border-radius:7px;font-size:13.5px;margin:12px 0}
+.msg.err{background:var(--clay-soft);color:var(--clay);border-left:3px solid var(--clay)}
+.msg.ok{background:var(--brand-soft);color:var(--brand);border-left:3px solid var(--brand)}
+.msg.warn{background:var(--amber-soft);color:var(--amber);border-left:3px solid var(--amber)}
+
+/* login card */
+.auth-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:32px 28px;box-shadow:var(--shadow)}
+.auth-card h1{font-size:26px;margin-bottom:4px}
+.auth-card p.sub{color:var(--muted);font-size:13.5px;margin:0 0 22px}
+.auth-toggle{display:flex;gap:2px;background:var(--surface-2);border-radius:8px;padding:3px;margin-bottom:20px}
+.auth-toggle button{flex:1;border:none;background:none;padding:8px;border-radius:6px;font-weight:600;font-size:13.5px;color:var(--muted);cursor:pointer}
+.auth-toggle button.on{background:var(--surface);color:var(--brand);box-shadow:var(--shadow)}
+
+.eyebrow{font-family:'IBM Plex Mono';font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--brand)}
+.section-title{margin-top:4px;font-size:22px}
+.footnote{font-size:12px;color:var(--muted)}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spinner{animation:none}}
