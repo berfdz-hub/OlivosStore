@@ -70,7 +70,18 @@
 
   <div class="pane" id="pane-productos">
     <h2 class="section-title" style="margin-top:20px">Productos del periodo</h2>
-    <div class="card" style="margin-top:14px">
+    <div class="grid grid2" style="margin-top:14px;align-items:start">
+      <div class="card">
+        <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin-bottom:10px">Top 10 por utilidad</h3>
+        <div class="scroll"><table id="tblTopUtilidad"></table></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin-bottom:10px">Más y menos solicitados</h3>
+        <table id="tblExtremos"></table>
+      </div>
+    </div>
+    <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 4px">Todos los productos</h3>
+    <div class="card" style="margin-top:10px">
       <div class="scroll"><table id="tblProdRank"><thead><tr><th>Producto</th><th class="num">Uds.</th><th class="num">Tickets</th><th class="num">Venta</th><th class="num">Costo</th><th class="num">Margen</th><th class="num">Utilidad</th></tr></thead><tbody></tbody></table></div>
     </div>
     <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 4px">Venta por categoría</h3>
@@ -98,16 +109,19 @@
 
   <div class="pane" id="pane-inventario">
     <h2 class="section-title" style="margin-top:20px">Variación de inventario</h2>
-    <p class="footnote" style="margin-top:6px">Solo aparecen productos con conteo físico capturado en el periodo.</p>
+    <p class="footnote" style="margin-top:6px">Solo aparecen productos con conteo físico capturado en el periodo. Teórico = inventario inicial − vendido.</p>
+    <div id="invMsg"></div>
     <div class="card" style="margin-top:14px">
-      <div class="scroll"><table id="tblMerma"><thead><tr><th>Fecha</th><th>Producto</th><th class="num">Vendido</th><th class="num">Físico</th><th class="num">Diferencia</th></tr></thead><tbody></tbody></table></div>
+      <div class="scroll"><table id="tblMerma"><thead><tr><th>Fecha</th><th>Producto</th><th class="num">Teórico</th><th class="num">Físico</th><th class="num">Diferencia</th><th class="num">Valor</th></tr></thead><tbody></tbody></table></div>
     </div>
   </div>
 
   <div class="pane" id="pane-estacionamiento">
     <h2 class="section-title" style="margin-top:20px">Estacionamiento por partido</h2>
+    <p class="footnote" style="margin-top:6px">"Venta ventana ±" es la venta de la tienda entre 60 min antes y 150 min después del arranque de cada partido — no es correlación estadística formal, solo referencia mientras se acumulan más partidos.</p>
+    <div id="parkingInsight"></div>
     <div class="card" style="margin-top:14px">
-      <div class="scroll"><table id="tblParking"><thead><tr><th>Fecha</th><th>Hora</th><th class="num">Autos (lote)</th><th class="num">Autos cobrados</th><th class="num">Ingreso</th><th class="num">Venta ventana ±</th></tr></thead><tbody></tbody></table></div>
+      <div class="scroll"><table id="tblParking"><thead><tr><th>Fecha</th><th>Hora</th><th class="num">Autos (lote)</th><th class="num">Autos cobrados</th><th class="num">Ingreso</th><th class="num">Venta ventana ±</th><th class="num">Venta/auto</th></tr></thead><tbody></tbody></table></div>
     </div>
   </div>
 
@@ -297,23 +311,35 @@ function renderResumen() {
   const margen = ventaConCosto ? (utilidad / ventaConCosto * 100) : null;
   const uds = ITEMS.reduce((s, it) => s + it.qty, 0);
 
+  const montos = TICKETS.map(t => Number(t.amount)).sort((a, b) => a - b);
+  const mediana = montos.length ? (montos.length % 2 ? montos[(montos.length - 1) / 2] : (montos[montos.length / 2 - 1] + montos[montos.length / 2]) / 2) : null;
+  const skusPorTicket = new Map();
+  ITEMS.forEach(it => { skusPorTicket.set(it.ticket_id, (skusPorTicket.get(it.ticket_id) || 0) + 1); });
+  const monoTickets = TICKETS.filter(t => (skusPorTicket.get(t.id) || 0) <= 1).length;
+
   const kpis = [
     ['Venta total', money(venta)],
     ['Utilidad (costo conocido)', margen != null ? moneyD(utilidad) : '—'],
     ['Margen', margen != null ? margen.toFixed(1) + '%' : '—'],
     ['Tickets', n],
     ['Ticket promedio', n ? moneyD(venta / n) : '—'],
+    ['Ticket mediano', mediana != null ? moneyD(mediana) : '—'],
     ['Unidades / ticket', n ? (uds / n).toFixed(2) : '—'],
+    ['Tickets de 1 producto', n ? Math.round(monoTickets / n * 100) + '%' : '—'],
     ['Días capturados', DAYS.length],
   ];
   document.getElementById('kpis').innerHTML = kpis.map(([l, v]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join('');
+
+  const gameHours = new Set();
+  GAMES.forEach(g => { const h = parseInt(g.start_time.split(':')[0]); if (!isNaN(h)) gameHours.add(h); });
 
   const byHour = new Array(24).fill(0);
   TICKETS.forEach(t => { byHour[new Date(t.ts).getHours()] += Number(t.amount); });
   const used = byHour.map((v, h) => ({ h, v })).filter(x => x.v > 0);
   const max = Math.max(1, ...used.map(x => x.v));
   document.getElementById('barchart').innerHTML = used.map(x => `
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative">
+      ${gameHours.has(x.h) ? `<div style="position:absolute;top:-20px;font-size:13px" title="Arranca un partido">⚽</div>` : ''}
       <div class="mono" style="font-size:10px;color:var(--ink-2);margin-bottom:4px">${money(x.v)}</div>
       <div style="width:100%;max-width:34px;border-radius:4px 4px 2px 2px;background:var(--brand);height:${Math.round(x.v / max * 100)}%" title="${x.h}:00"></div>
       <div class="mono" style="font-size:10.5px;color:var(--muted);margin-top:6px">${x.h}h</div>
@@ -337,6 +363,21 @@ function renderProductos() {
     const margen = (util != null && venta) ? (util / venta * 100) : null;
     return { name: a.name, uds: a.uds, tks: a.tks.size, venta, costo, util, margen, category: p ? (p.category || 'Otro') : 'Sin catálogo' };
   }).sort((x, y) => y.uds - x.uds);
+
+  const topUtilidad = [...rows].filter(r => r.util != null).sort((x, y) => y.util - x.util).slice(0, 10);
+  document.getElementById('tblTopUtilidad').innerHTML = `<thead><tr><th>Producto</th><th class="num">Uds.</th><th class="num">Margen</th><th class="num">Utilidad</th></tr></thead><tbody>${
+    topUtilidad.map(r => `<tr><td>${r.name}</td><td class="num">${r.uds}</td><td class="num">${r.margen.toFixed(0)}%</td><td class="num pos">${moneyD(r.util)}</td></tr>`).join('')
+    || '<tr><td colspan="4">Sin datos con costo conocido.</td></tr>'}</tbody>`;
+
+  const porDemanda = [...rows].sort((x, y) => y.uds - x.uds);
+  const masSolicitados = porDemanda.slice(0, 5);
+  const menosSolicitados = [...porDemanda].reverse().slice(0, 5);
+  document.getElementById('tblExtremos').innerHTML =
+    `<thead><tr><th colspan="2">Más solicitados</th></tr></thead><tbody>` +
+    masSolicitados.map((r, i) => `<tr><td class="num mono" style="text-align:left;color:var(--muted)">${i + 1}</td><td style="text-align:left">${r.name} (${r.uds})</td></tr>`).join('') +
+    `</tbody><thead><tr><th colspan="2" style="padding-top:14px">Menos solicitados</th></tr></thead><tbody>` +
+    menosSolicitados.map((r, i) => `<tr><td class="num mono" style="text-align:left;color:var(--muted)">${i + 1}</td><td style="text-align:left">${r.name} (${r.uds})</td></tr>`).join('') +
+    `</tbody>`;
 
   document.querySelector('#tblProdRank tbody').innerHTML = rows.map(r => `
     <tr><td>${r.name}</td><td class="num">${r.uds}</td><td class="num">${r.tks}</td>
@@ -468,12 +509,25 @@ function renderInventario() {
   const rows = INV_COUNTS.filter(c => c.physical_count != null).map(c => {
     const p = prodById.get(c.product_id);
     const day = dayById.get(c.sale_day_id);
-    const dif = (c.sold != null && c.physical_count != null) ? c.physical_count - (c.sold != null ? 0 : 0) : null;
-    return { fecha: day ? day.date : '?', producto: p ? p.name : '?', vendido: c.sold, fisico: c.physical_count };
-  });
+    const teorico = (c.opening_stock != null && c.sold != null) ? c.opening_stock - c.sold : null;
+    const dif = (teorico != null) ? c.physical_count - teorico : null;
+    const valor = (dif != null && dif < 0 && p && p.cost_price != null) ? Math.abs(dif) * p.cost_price : null;
+    return { fecha: day ? day.date : '?', producto: p ? p.name : '?', teorico, fisico: c.physical_count, dif, valor };
+  }).sort((a, b) => (a.dif ?? 0) - (b.dif ?? 0));
+
+  const totalMerma = rows.filter(r => r.valor != null).reduce((s, r) => s + r.valor, 0);
   document.querySelector('#tblMerma tbody').innerHTML = rows.map(r => `
-    <tr><td>${r.fecha}</td><td>${r.producto}</td><td class="num">${r.vendido ?? '—'}</td><td class="num">${r.fisico}</td><td class="num">—</td></tr>
-  `).join('') || '<tr><td colspan="5">No hay conteos físicos capturados en el periodo.</td></tr>';
+    <tr><td>${r.fecha}</td><td>${r.producto}</td><td class="num">${r.teorico ?? '—'}</td><td class="num">${r.fisico}</td>
+      <td class="num ${r.dif != null && r.dif < 0 ? 'neg' : ''}">${r.dif ?? '—'}</td>
+      <td class="num">${r.valor != null ? moneyD(r.valor) : '—'}</td></tr>
+  `).join('') || '<tr><td colspan="6">No hay conteos físicos capturados en el periodo.</td></tr>';
+
+  const invMsg = document.getElementById('invMsg');
+  if (invMsg) {
+    invMsg.innerHTML = totalMerma > 0
+      ? `<div class="msg warn">Merma detectada en el periodo: <b>${moneyD(totalMerma)}</b> (solo productos con costo conocido y conteo físico capturado).</div>`
+      : rows.length ? `<div class="msg ok">Sin merma detectada en los conteos físicos del periodo.</div>` : '';
+  }
 }
 
 function renderEstacionamiento() {
@@ -483,30 +537,67 @@ function renderEstacionamiento() {
     if (!ticketsByDay.has(t.sale_day_id)) ticketsByDay.set(t.sale_day_id, []);
     ticketsByDay.get(t.sale_day_id).push(t);
   });
-  const rows = GAMES.map(g => {
-    const day = dayById.get(g.sale_day_id);
-    const [hh, mm] = g.start_time.split(':').map(Number);
-    const ini = hh * 60 + mm, desde = ini - 60, hasta = ini + 150;
-    const dayTickets = ticketsByDay.get(g.sale_day_id) || [];
-    const ventana = dayTickets.filter(t => {
-      const d = new Date(t.ts); const min = d.getHours() * 60 + d.getMinutes();
-      return min >= desde && min < hasta;
+  // ventana: 60 min antes del arranque, 150 despues (120 de juego + 30 de cierre),
+  // recortada si el siguiente partido del mismo dia empieza antes de que termine.
+  const gamesByDay = new Map();
+  GAMES.forEach(g => {
+    if (!gamesByDay.has(g.sale_day_id)) gamesByDay.set(g.sale_day_id, []);
+    gamesByDay.get(g.sale_day_id).push(g);
+  });
+
+  const rows = [];
+  gamesByDay.forEach((dayGames, sale_day_id) => {
+    const day = dayById.get(sale_day_id);
+    const sorted = [...dayGames].sort((a, b) => a.start_time.localeCompare(b.start_time));
+    sorted.forEach((g, i) => {
+      const [hh, mm] = g.start_time.split(':').map(Number);
+      const ini = hh * 60 + mm;
+      const desde = ini - 60;
+      let hasta = ini + 150;
+      const next = sorted[i + 1];
+      if (next) {
+        const [nh, nm] = next.start_time.split(':').map(Number);
+        hasta = Math.min(hasta, (nh * 60 + nm) - 60);
+      }
+      const dayTickets = ticketsByDay.get(sale_day_id) || [];
+      const ventana = dayTickets.filter(t => {
+        const d = new Date(t.ts); const min = d.getHours() * 60 + d.getMinutes();
+        return min >= desde && min < hasta;
+      });
+      const venta = ventana.reduce((s, t) => s + Number(t.amount), 0);
+      rows.push({
+        fecha: day ? day.date : '?', hora: g.start_time,
+        autosLote: g.cars_parked, autosCobrados: g.cars_charged,
+        cobra: g.charges_parking !== false,
+        ingreso: g.charges_parking === false ? 0 : g.cars_charged * g.parking_rate,
+        venta, nota: g.notes || ''
+      });
     });
-    const venta = ventana.reduce((s, t) => s + Number(t.amount), 0);
-    return {
-      fecha: day ? day.date : '?', hora: g.start_time,
-      autosLote: g.cars_parked, autosCobrados: g.cars_charged,
-      cobra: g.charges_parking !== false,
-      ingreso: g.charges_parking === false ? 0 : g.cars_charged * g.parking_rate,
-      venta, nota: g.notes || ''
-    };
-  }).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  });
+  rows.sort((a, b) => b.fecha.localeCompare(a.fecha) || a.hora.localeCompare(b.hora));
   document.querySelector('#tblParking tbody').innerHTML = rows.map(r => `
     <tr><td>${r.fecha}</td><td>${r.hora}${r.nota ? `<div class="footnote">${r.nota}</div>` : ''}</td>
       <td class="num">${r.autosLote}</td><td class="num">${r.autosCobrados}</td>
       <td class="num">${r.cobra ? money(r.ingreso) : '<span class="chip draft">sin cobro</span>'}</td>
-      <td class="num">${money(r.venta)}</td></tr>
-  `).join('') || '<tr><td colspan="6">No hay partidos capturados en el periodo.</td></tr>';
+      <td class="num">${money(r.venta)}</td>
+      <td class="num">${r.autosLote ? moneyD(r.venta / r.autosLote) : '—'}</td></tr>
+  `).join('') || '<tr><td colspan="7">No hay partidos capturados en el periodo.</td></tr>';
+
+  const withCars = rows.filter(r => r.autosLote > 0);
+  const insightEl = document.getElementById('parkingInsight');
+  if (withCars.length >= 2) {
+    const sorted = [...withCars].sort((a, b) => a.autosLote - b.autosLote);
+    const smallest = sorted[0], biggest = sorted[sorted.length - 1];
+    const ratioSmall = smallest.venta / smallest.autosLote, ratioBig = biggest.venta / biggest.autosLote;
+    insightEl.innerHTML = `<div class="msg ${ratioBig < ratioSmall ? 'warn' : 'ok'}">
+      El partido con menos autos (${smallest.autosLote}, ${smallest.fecha}) dejó ${moneyD(ratioSmall)} de venta por auto;
+      el de más autos (${biggest.autosLote}, ${biggest.fecha}) dejó ${moneyD(ratioBig)} por auto.
+      ${ratioBig < ratioSmall ? 'Más autos no está trayendo más venta proporcional — posible cuello de botella en caja en los partidos grandes.' : 'La venta por auto se mantiene o mejora con más autos.'}
+      Con ${withCars.length} partidos capturados esto es un patrón a observar, no una conclusión estadística todavía.
+    </div>`;
+  } else {
+    insightEl.innerHTML = '';
+  }
 }
 
 function renderDaysTable() {
