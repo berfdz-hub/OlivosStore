@@ -34,10 +34,22 @@
 <main class="wrap">
 
   <div class="card" style="margin-bottom:0">
-    <div class="grid grid3">
+    <div class="grid grid4">
       <div class="field" style="margin-bottom:0"><label>Desde</label><input type="date" id="fFrom"></div>
       <div class="field" style="margin-bottom:0"><label>Hasta</label><input type="date" id="fTo"></div>
       <div style="display:flex;align-items:flex-end"><button class="btn" id="btnFilter" style="width:100%">Aplicar rango</button></div>
+      <div></div>
+    </div>
+    <div class="grid grid3" style="margin-top:12px">
+      <div class="field" style="margin-bottom:0"><label>Tipo de día</label>
+        <select id="fTipoDia"><option value="todos">Todos</option><option value="semana">Entre semana</option><option value="finde">Fin de semana</option></select>
+      </div>
+      <div class="field" style="margin-bottom:0"><label>Partido</label>
+        <select id="fTipoPartido"><option value="todos">Todos</option><option value="con">Con partido</option><option value="sin">Sin partido</option></select>
+      </div>
+      <div class="field" style="margin-bottom:0"><label>Deporte</label>
+        <select id="fDeporte"><option value="todos">Todos</option><option value="futbol">Fútbol</option><option value="beisbol">Béisbol / Softbol</option><option value="otro">Otro / normal</option></select>
+      </div>
     </div>
   </div>
 
@@ -141,7 +153,11 @@ const gmsg = (t, h) => document.getElementById('globalMsg').innerHTML = `<div cl
 
 let ME = null;
 let RANGE = { from: null, to: null };
-let DAYS = [], TICKETS = [], ITEMS = [], PRODUCTS = [], GAMES = [], INV_COUNTS = [];
+let PRODUCTS = [];
+// datos completos del rango de fechas (sin filtrar por segmento)
+let ALL_DAYS = [], ALL_TICKETS = [], ALL_ITEMS = [], ALL_GAMES = [], ALL_INV = [];
+// vista actual después de aplicar los filtros de segmento (lo que usan los render*)
+let DAYS = [], TICKETS = [], ITEMS = [], GAMES = [], INV_COUNTS = [];
 
 document.getElementById('tabbar').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-tab]');
@@ -162,6 +178,8 @@ async function init() {
 
   document.getElementById('btnFilter').addEventListener('click', loadAll);
   document.getElementById('formNewProduct').addEventListener('submit', addProduct);
+  ['fTipoDia', 'fTipoPartido', 'fDeporte'].forEach(id =>
+    document.getElementById(id).addEventListener('change', applyFilters));
 
   await loadAll();
   await loadCatalogFull();
@@ -179,40 +197,80 @@ async function loadAll() {
     .gte('date', RANGE.from).lte('date', RANGE.to)
     .order('date', { ascending: false });
   if (dErr) { gmsg('err', 'Error cargando días: ' + dErr.message); return; }
-  DAYS = days;
-  const dayIds = DAYS.map(d => d.id);
+  ALL_DAYS = days;
+  const dayIds = ALL_DAYS.map(d => d.id);
 
   const { data: products } = await supabase.from('products').select('id, name, category, cost_price, sell_price, active');
   PRODUCTS = products || [];
 
   if (!dayIds.length) {
-    TICKETS = []; ITEMS = []; GAMES = []; INV_COUNTS = [];
+    ALL_TICKETS = []; ALL_ITEMS = []; ALL_GAMES = []; ALL_INV = [];
     gmsg('warn', 'No hay días capturados en ese rango.');
-    renderAll();
+    applyFilters();
     return;
   }
 
   const { data: tickets } = await supabase.from('tickets').select('id, sale_day_id, ts, amount, payment_type').in('sale_day_id', dayIds);
-  TICKETS = tickets || [];
-  const ticketIds = TICKETS.map(t => t.id);
+  ALL_TICKETS = tickets || [];
+  const ticketIds = ALL_TICKETS.map(t => t.id);
 
-  ITEMS = [];
+  ALL_ITEMS = [];
   if (ticketIds.length) {
     const chunkSize = 500;
     for (let i = 0; i < ticketIds.length; i += chunkSize) {
       const chunk = ticketIds.slice(i, i + chunkSize);
       const { data } = await supabase.from('ticket_items').select('id, ticket_id, product_id, product_name_raw, qty').in('ticket_id', chunk);
-      if (data) ITEMS.push(...data);
+      if (data) ALL_ITEMS.push(...data);
     }
   }
 
   const { data: games } = await supabase.from('games').select('id, sale_day_id, start_time, cars_parked, cars_charged, parking_rate, charges_parking, notes').in('sale_day_id', dayIds);
-  GAMES = games || [];
+  ALL_GAMES = games || [];
 
   const { data: invc } = await supabase.from('inventory_counts').select('id, sale_day_id, product_id, opening_stock, sold, physical_count, note').in('sale_day_id', dayIds);
-  INV_COUNTS = invc || [];
+  ALL_INV = invc || [];
 
-  gmsg('ok', `${DAYS.length} día(s), ${TICKETS.length} tickets cargados.`);
+  applyFilters();
+}
+
+function isWeekend(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dow = new Date(y, m - 1, d).getDay();
+  return dow === 0 || dow === 6;
+}
+
+function applyFilters() {
+  const tipoDia = document.getElementById('fTipoDia').value;
+  const tipoPartido = document.getElementById('fTipoPartido').value;
+  const deporte = document.getElementById('fDeporte').value;
+
+  const gamesByDay = new Map();
+  ALL_GAMES.forEach(g => {
+    if (!gamesByDay.has(g.sale_day_id)) gamesByDay.set(g.sale_day_id, []);
+    gamesByDay.get(g.sale_day_id).push(g);
+  });
+
+  DAYS = ALL_DAYS.filter(d => {
+    if (tipoDia === 'semana' && isWeekend(d.date)) return false;
+    if (tipoDia === 'finde' && !isWeekend(d.date)) return false;
+    const hasGames = (gamesByDay.get(d.id) || []).length > 0;
+    if (tipoPartido === 'con' && !hasGames) return false;
+    if (tipoPartido === 'sin' && hasGames) return false;
+    if (deporte !== 'todos' && d.sport !== deporte) return false;
+    return true;
+  });
+
+  const dayIdSet = new Set(DAYS.map(d => d.id));
+  TICKETS = ALL_TICKETS.filter(t => dayIdSet.has(t.sale_day_id));
+  const ticketIdSet = new Set(TICKETS.map(t => t.id));
+  ITEMS = ALL_ITEMS.filter(it => ticketIdSet.has(it.ticket_id));
+  GAMES = ALL_GAMES.filter(g => dayIdSet.has(g.sale_day_id));
+  INV_COUNTS = ALL_INV.filter(c => dayIdSet.has(c.sale_day_id));
+
+  const totalMsg = ALL_DAYS.length === DAYS.length
+    ? `${DAYS.length} día(s), ${TICKETS.length} tickets cargados.`
+    : `${DAYS.length} de ${ALL_DAYS.length} día(s) del rango coinciden con el filtro — ${TICKETS.length} tickets.`;
+  gmsg(DAYS.length ? 'ok' : 'warn', DAYS.length ? totalMsg : 'Ningún día del rango coincide con ese filtro.');
   renderAll();
 }
 
