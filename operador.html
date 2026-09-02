@@ -88,8 +88,8 @@
 
     <div class="card hide" id="cardMultiDay">
       <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:4px">Días detectados en el archivo</h3>
-      <p class="footnote" style="margin-bottom:12px">El CSV trae varios días — dile a cada uno qué deporte fue y si es evento especial, día de partido normal, o entrenamiento. No se agregan partidos/estacionamiento ni conteo de inventario en este modo; si algún día necesita eso, lo editas después.</p>
-      <div style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:14px;background:var(--surface-2)">
+      <p class="footnote" style="margin-bottom:12px">La app ya clasificó todos los días como "Entrenamiento normal" y marcó con ⚡ los que tuvieron venta fuera de lo normal (posibles eventos especiales o días de partido) — solo revisa esos, dales deporte/categoría/evento, y confirma el resto. No se agregan partidos/estacionamiento ni conteo de inventario en este modo; si algún día necesita eso, lo editas después.</p>
+      <div style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;background:var(--surface-2)">
         <label style="margin-bottom:8px">Aplicar a todos los días de este archivo</label>
         <div class="grid grid4" style="align-items:end">
           <div class="field" style="margin-bottom:0"><select id="mdAllSport">
@@ -100,6 +100,19 @@
           </select></div>
           <div class="field" style="margin-bottom:0"><input type="text" id="mdAllEvento" placeholder="Nombre del evento (opcional)"></div>
           <button type="button" class="btn sec sm" id="btnApplyAll">Aplicar a todos</button>
+        </div>
+      </div>
+      <div style="border:1px solid var(--amber);border-radius:8px;padding:12px;margin-bottom:14px;background:var(--amber-soft)">
+        <label style="margin-bottom:8px">Aplicar solo a los días marcados ⚡ (venta fuerte)</label>
+        <div class="grid grid4" style="align-items:end">
+          <div class="field" style="margin-bottom:0"><select id="mdFlagSport">
+            <option value="futbol">Fútbol</option><option value="beisbol">Béisbol / Softbol</option><option value="otro">Otro</option>
+          </select></div>
+          <div class="field" style="margin-bottom:0"><select id="mdFlagCategoria">
+            <option value="evento_especial" selected>Evento especial</option><option value="dia_partido">Día de partido</option><option value="entrenamiento_normal">Entrenamiento normal</option>
+          </select></div>
+          <div class="field" style="margin-bottom:0"><input type="text" id="mdFlagEvento" placeholder="Nombre del evento (ej. Torneo Julio)"></div>
+          <button type="button" class="btn sec sm" id="btnApplyFlagged">Aplicar a marcados</button>
         </div>
       </div>
       <div class="scroll">
@@ -272,7 +285,12 @@ function onCsvChange(e) {
         PARSED_DAYS = distinctDates.map(date => ({
           date, tickets: byDate.get(date), venta: byDate.get(date).reduce((s, t) => s + t.amount, 0)
         }));
-        html += `<div class="msg ok">Este archivo trae <b>${distinctDates.length} días distintos</b> (${distinctDates[0]} a ${distinctDates[distinctDates.length - 1]}) — clasifica cada uno abajo.</div>`;
+        flagStrongSaleDays(PARSED_DAYS);
+        const nFlagged = PARSED_DAYS.filter(d => d.flag).length;
+        html += `<div class="msg ok">Este archivo trae <b>${distinctDates.length} días distintos</b> (${distinctDates[0]} a ${distinctDates[distinctDates.length - 1]})`;
+        html += nFlagged
+          ? ` — <b>${nFlagged}</b> se marcaron con ⚡ por venta fuera de lo normal, revísalos abajo. El resto ya quedó como entrenamiento normal.</div>`
+          : ` — ninguno se ve fuera de lo normal, ya quedaron como entrenamiento normal. Ajusta el deporte si hace falta.</div>`;
         renderMultiDayTable();
         document.getElementById('cardMultiDay').classList.remove('hide');
         document.getElementById('cardInv').classList.add('hide');
@@ -297,10 +315,19 @@ function onCsvChange(e) {
   reader.readAsText(f, 'UTF-8');
 }
 
+function flagStrongSaleDays(days) {
+  const ventas = days.map(d => d.venta).sort((a, b) => a - b);
+  const n = ventas.length;
+  const mediana = n % 2 ? ventas[(n - 1) / 2] : (ventas[n / 2 - 1] + ventas[n / 2]) / 2;
+  const umbral = mediana * 1.5;
+  days.forEach(d => { d.flag = n >= 3 && mediana > 0 && d.venta >= umbral; });
+}
+
 function renderMultiDayTable() {
   document.querySelector('#tblMultiDay tbody').innerHTML = PARSED_DAYS.map(d => `
-    <tr data-date="${d.date}">
-      <td>${d.date}</td><td class="num">${d.tickets.length}</td><td class="num">${money(d.venta)}</td>
+    <tr data-date="${d.date}" class="${d.flag ? 'row-flag' : ''}">
+      <td>${d.date}${d.flag ? '<span class="badge-flag">⚡ venta fuerte</span>' : ''}</td>
+      <td class="num">${d.tickets.length}</td><td class="num">${money(d.venta)}</td>
       <td><select class="mdSport">
         <option value="futbol">Fútbol</option><option value="beisbol">Béisbol / Softbol</option><option value="otro" selected>Otro</option>
       </select></td>
@@ -317,6 +344,16 @@ function wireApplyAll() {
     const categoria = document.getElementById('mdAllCategoria').value;
     const evento = document.getElementById('mdAllEvento').value.trim();
     document.querySelectorAll('#tblMultiDay tbody tr').forEach(tr => {
+      tr.querySelector('.mdSport').value = sport;
+      tr.querySelector('.mdCategoria').value = categoria;
+      if (evento) tr.querySelector('.mdEvento').value = evento;
+    });
+  });
+  document.getElementById('btnApplyFlagged').addEventListener('click', () => {
+    const sport = document.getElementById('mdFlagSport').value;
+    const categoria = document.getElementById('mdFlagCategoria').value;
+    const evento = document.getElementById('mdFlagEvento').value.trim();
+    document.querySelectorAll('#tblMultiDay tbody tr.row-flag').forEach(tr => {
       tr.querySelector('.mdSport').value = sport;
       tr.querySelector('.mdCategoria').value = categoria;
       if (evento) tr.querySelector('.mdEvento').value = evento;

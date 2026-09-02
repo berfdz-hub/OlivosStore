@@ -90,6 +90,7 @@
   <div class="pane on" id="pane-resumen">
     <h2 class="section-title" style="margin-top:20px">Resumen del periodo</h2>
     <div class="kpis" id="kpis" style="margin-top:14px"></div>
+    <div id="sinCostoNote"></div>
     <div class="card" style="margin-top:16px">
       <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:12px">Venta por hora (acumulado del periodo)</h3>
       <div id="barchart" style="display:flex;align-items:flex-end;gap:8px;height:180px;border-bottom:1px solid var(--line)"></div>
@@ -141,6 +142,15 @@
     <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 4px">Todos los productos</h3>
     <div class="card" style="margin-top:10px">
       <div class="scroll"><table id="tblProdRank"><thead><tr><th>Producto</th><th class="num">Uds.</th><th class="num">Tickets</th><th class="num">Venta</th><th class="num">Costo</th><th class="num">Margen</th><th class="num">Utilidad</th></tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <div class="admin-only">
+    <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 4px">Productos sin costo registrado</h3>
+    <p class="footnote">No se les conoce el costo de compra, así que no cuentan en ningún cálculo de margen o utilidad del resto de la app (para no inflarlos ni contaminarlos) — pero aquí se reportan sus ventas para que no queden ocultos. Captúrales el costo en <a href="#" onclick="document.querySelector('[data-tab=catalogo]')?.click();return false">Catálogo</a> en cuanto lo sepas.</p>
+    <div class="card" style="margin-top:10px">
+      <div id="sinCostoTotal" class="footnote" style="margin-bottom:8px"></div>
+      <div class="scroll"><table id="tblSinCosto"><thead><tr><th>Producto</th><th class="num">Uds.</th><th class="num">Tickets</th><th class="num">Venta</th></tr></thead><tbody></tbody></table></div>
+    </div>
     </div>
     <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 4px">Venta por categoría</h3>
     <div class="card" style="margin-top:10px" id="catbars"></div>
@@ -599,6 +609,14 @@ function renderResumen() {
   ];
   document.getElementById('kpis').innerHTML = kpis.map(([l, v]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join('');
 
+  const ventaSinCosto = venta - ventaConCosto;
+  const noteEl = document.getElementById('sinCostoNote');
+  if (noteEl) {
+    noteEl.innerHTML = (IS_ADMIN && ventaSinCosto > 1)
+      ? `<div class="msg warn">${moneyD(ventaSinCosto)} en venta (${venta ? Math.round(ventaSinCosto / venta * 100) : 0}% del periodo) es de productos sin costo registrado — no cuentan en la Utilidad ni el Margen de arriba, para no inflarlos ni contaminarlos. Detalle en la pestaña <a href="#" onclick="document.querySelector('[data-tab=productos]').click();return false">Productos → Productos sin costo registrado</a>.</div>`
+      : '';
+  }
+
   const gameHours = new Set();
   GAMES.forEach(g => { const h = parseInt(g.start_time.split(':')[0]); if (!isNaN(h)) gameHours.add(h); });
 
@@ -655,6 +673,16 @@ function renderProductos() {
       <td class="num">${r.margen != null ? r.margen.toFixed(1) + '%' : '—'}</td>
       <td class="num ${r.util != null ? 'pos' : ''}">${r.util != null ? moneyD(r.util) : '—'}</td></tr>
   `).join('') || '<tr><td colspan="7">Sin datos en el periodo.</td></tr>';
+
+  const sinCosto = rows.filter(r => r.costo == null).sort((x, y) => y.uds - x.uds);
+  const ventaSinCosto = sinCosto.reduce((s, r) => s + (r.venta || 0), 0);
+  document.getElementById('sinCostoTotal').textContent = sinCosto.length
+    ? `${sinCosto.length} producto(s), ${moneyD(ventaSinCosto)} en venta cuantificable (los "sin catálogo" no tienen precio registrado, así que tampoco entran en esa suma).`
+    : 'Todos los productos vendidos en el periodo tienen costo registrado.';
+  document.querySelector('#tblSinCosto tbody').innerHTML = sinCosto.map(r => `
+    <tr><td>${r.name}</td><td class="num">${r.uds}</td><td class="num">${r.tks}</td>
+      <td class="num">${r.venta != null ? money(r.venta) : '—'}</td></tr>
+  `).join('') || '<tr><td colspan="4">Ninguno.</td></tr>';
 
   const catColors = ['var(--brand)', 'var(--amber)', 'var(--clay)', 'var(--blue)', 'var(--muted)'];
   const cats = new Map();
