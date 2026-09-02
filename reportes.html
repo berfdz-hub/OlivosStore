@@ -51,7 +51,7 @@
       <div style="display:flex;align-items:flex-end"><button class="btn" id="btnFilter" style="width:100%">Aplicar rango</button></div>
       <div></div>
     </div>
-    <div class="grid grid3" style="margin-top:12px">
+    <div class="grid grid4" style="margin-top:12px">
       <div class="field" style="margin-bottom:0"><label>Tipo de día</label>
         <select id="fTipoDia"><option value="todos">Todos</option><option value="semana">Entre semana</option><option value="finde">Fin de semana</option></select>
       </div>
@@ -61,17 +61,23 @@
       <div class="field" style="margin-bottom:0"><label>Deporte</label>
         <select id="fDeporte"><option value="todos">Todos</option><option value="futbol">Fútbol</option><option value="beisbol">Béisbol / Softbol</option><option value="otro">Otro / normal</option></select>
       </div>
+      <div class="field" style="margin-bottom:0"><label>Categoría</label>
+        <select id="fCategoria"><option value="todos">Todas</option><option value="evento_especial">Evento especial</option><option value="dia_partido">Día de partido</option><option value="entrenamiento_normal">Entrenamiento normal</option></select>
+      </div>
     </div>
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <span class="footnote" style="margin-right:2px">Atajos:</span>
-      <button type="button" class="btn sec sm" data-preset="todos,todos,todos">Todos</button>
-      <button type="button" class="btn sec sm" data-preset="semana,todos,todos">Entre semana</button>
-      <button type="button" class="btn sec sm" data-preset="finde,todos,todos">Fin de semana</button>
-      <button type="button" class="btn sec sm" data-preset="todos,con,todos">Con partido</button>
-      <button type="button" class="btn sec sm" data-preset="semana,con,todos">Entre semana con partido</button>
-      <button type="button" class="btn sec sm" data-preset="finde,con,todos">Fin de semana con partido</button>
-      <button type="button" class="btn sec sm" data-preset="todos,todos,futbol">Fútbol</button>
-      <button type="button" class="btn sec sm" data-preset="todos,todos,beisbol">Béisbol</button>
+      <button type="button" class="btn sec sm" data-preset="todos,todos,todos,todos">Todos</button>
+      <button type="button" class="btn sec sm" data-preset="semana,todos,todos,todos">Entre semana</button>
+      <button type="button" class="btn sec sm" data-preset="finde,todos,todos,todos">Fin de semana</button>
+      <button type="button" class="btn sec sm" data-preset="todos,con,todos,todos">Con partido</button>
+      <button type="button" class="btn sec sm" data-preset="semana,con,todos,todos">Entre semana con partido</button>
+      <button type="button" class="btn sec sm" data-preset="finde,con,todos,todos">Fin de semana con partido</button>
+      <button type="button" class="btn sec sm" data-preset="todos,todos,futbol,todos">Fútbol</button>
+      <button type="button" class="btn sec sm" data-preset="todos,todos,beisbol,todos">Béisbol</button>
+      <button type="button" class="btn sec sm" data-preset="todos,todos,todos,evento_especial">Evento especial</button>
+      <button type="button" class="btn sec sm" data-preset="todos,todos,todos,dia_partido">Día de partido</button>
+      <button type="button" class="btn sec sm" data-preset="todos,todos,todos,entrenamiento_normal">Entrenamiento normal</button>
     </div>
   </div>
 
@@ -86,7 +92,7 @@
     </div>
     <div class="card" style="margin-top:16px">
       <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:12px">Días en el periodo</h3>
-      <div class="scroll"><table id="tblDaysAdmin"><thead><tr><th>Fecha</th><th>Deporte</th><th>Venta fuerte</th><th class="num">Tickets</th><th class="num">Venta</th><th>Estado</th><th>Capturado por</th><th></th></tr></thead><tbody></tbody></table></div>
+      <div class="scroll"><table id="tblDaysAdmin"><thead><tr><th>Fecha</th><th>Deporte</th><th>Categoría</th><th class="num">Tickets</th><th class="num">Venta</th><th>Estado</th><th>Capturado por</th><th></th></tr></thead><tbody></tbody></table></div>
     </div>
   </div>
 
@@ -141,6 +147,12 @@
     <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por deporte</h3>
     <div class="card">
       <div class="scroll"><table id="tblCompDeporte"><thead><tr><th>Deporte</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Venta prom./día</th><th class="num">Utilidad prom./día</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por categoría de día</h3>
+    <p class="footnote">Evento especial (torneos), día de partido normal, o entrenamiento entre semana — se marca por día en la tabla de "Días en el periodo" del Resumen.</p>
+    <div class="card" style="margin-top:10px">
+      <div class="scroll"><table id="tblCompCategoria"><thead><tr><th>Categoría</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Venta prom./día</th><th class="num">Utilidad prom./día</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
     </div>
 
     <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por mes</h3>
@@ -335,13 +347,14 @@ async function init() {
 
   document.getElementById('btnFilter').addEventListener('click', loadAll);
   if (IS_ADMIN) document.getElementById('formNewProduct').addEventListener('submit', addProduct);
-  ['fTipoDia', 'fTipoPartido', 'fDeporte'].forEach(id =>
+  ['fTipoDia', 'fTipoPartido', 'fDeporte', 'fCategoria'].forEach(id =>
     document.getElementById(id).addEventListener('change', applyFilters));
   document.querySelectorAll('[data-preset]').forEach(btn => btn.addEventListener('click', () => {
-    const [dia, partido, deporte] = btn.dataset.preset.split(',');
+    const [dia, partido, deporte, categoria] = btn.dataset.preset.split(',');
     document.getElementById('fTipoDia').value = dia;
     document.getElementById('fTipoPartido').value = partido;
     document.getElementById('fDeporte').value = deporte;
+    document.getElementById('fCategoria').value = categoria;
     applyFilters();
   }));
   document.getElementById('coberturaDias').addEventListener('input', renderCompras);
@@ -374,7 +387,7 @@ async function loadAll() {
 
   const { data: days, error: dErr } = await supabase
     .from('sale_days')
-    .select('id, date, sport, status, is_strong_sale, created_by, profiles(full_name)')
+    .select('id, date, sport, status, day_type, created_by, profiles(full_name)')
     .gte('date', RANGE.from).lte('date', RANGE.to)
     .order('date', { ascending: false });
   if (dErr) { gmsg('err', 'Error cargando días: ' + dErr.message); return; }
@@ -425,6 +438,7 @@ function applyFilters() {
   const tipoDia = document.getElementById('fTipoDia').value;
   const tipoPartido = document.getElementById('fTipoPartido').value;
   const deporte = document.getElementById('fDeporte').value;
+  const categoria = document.getElementById('fCategoria').value;
 
   const gamesByDay = new Map();
   ALL_GAMES.forEach(g => {
@@ -439,6 +453,7 @@ function applyFilters() {
     if (tipoPartido === 'con' && !hasGames) return false;
     if (tipoPartido === 'sin' && hasGames) return false;
     if (deporte !== 'todos' && d.sport !== deporte) return false;
+    if (categoria !== 'todos' && d.day_type !== categoria) return false;
     return true;
   });
 
@@ -809,10 +824,15 @@ function renderDaysTable() {
            <option value="otro" ${(!d.sport || d.sport === 'otro') ? 'selected' : ''}>Otro / normal</option>
          </select>`
       : (sportLabel[d.sport] || d.sport || '—');
-    const strongCell = IS_ADMIN
-      ? `<input type="checkbox" class="edStrong" data-day="${d.id}" ${d.is_strong_sale ? 'checked' : ''}>`
-      : (d.is_strong_sale ? '<span class="chip reviewed">venta fuerte</span>' : '—');
-    return `<tr><td>${d.date}</td><td>${sportCell}</td><td>${strongCell}</td><td class="num">${o.n}</td><td class="num">${money(o.v)}</td>
+    const categoryLabel = { evento_especial: 'Evento especial', dia_partido: 'Día de partido', entrenamiento_normal: 'Entrenamiento normal' };
+    const categoryCell = IS_ADMIN
+      ? `<select class="edCategoria" data-day="${d.id}" style="min-width:170px">
+           <option value="evento_especial" ${d.day_type === 'evento_especial' ? 'selected' : ''}>Evento especial</option>
+           <option value="dia_partido" ${d.day_type === 'dia_partido' ? 'selected' : ''}>Día de partido</option>
+           <option value="entrenamiento_normal" ${(!d.day_type || d.day_type === 'entrenamiento_normal') ? 'selected' : ''}>Entrenamiento normal</option>
+         </select>`
+      : `<span class="chip ${d.day_type === 'evento_especial' ? 'reviewed' : (d.day_type === 'dia_partido' ? 'submitted' : 'draft')}">${categoryLabel[d.day_type] || 'Entrenamiento normal'}</span>`;
+    return `<tr><td>${d.date}</td><td>${sportCell}</td><td>${categoryCell}</td><td class="num">${o.n}</td><td class="num">${money(o.v)}</td>
       <td><span class="chip ${d.status}">${d.status}</span></td><td>${d.profiles ? d.profiles.full_name || '—' : '—'}</td>
       <td class="noprint">${IS_ADMIN ? `<button class="btn sec sm" type="button" onclick="window.__saveDaySport('${d.id}', this)">Guardar</button>` : ''}</td></tr>`;
   }).join('') || '<tr><td colspan="8">Sin días en el periodo.</td></tr>';
@@ -821,14 +841,14 @@ function renderDaysTable() {
 window.__saveDaySport = async (dayId, btn) => {
   const tr = btn.closest('tr');
   const sport = tr.querySelector('.edSport').value;
-  const is_strong_sale = tr.querySelector('.edStrong').checked;
+  const day_type = tr.querySelector('.edCategoria').value;
   btn.disabled = true;
-  const { error } = await supabase.from('sale_days').update({ sport, is_strong_sale }).eq('id', dayId);
+  const { error } = await supabase.from('sale_days').update({ sport, day_type }).eq('id', dayId);
   btn.disabled = false;
   if (error) { gmsg('err', 'No pude guardar: ' + error.message); return; }
   gmsg('ok', 'Día actualizado.');
   const day = ALL_DAYS.find(d => d.id === dayId);
-  if (day) { day.sport = sport; day.is_strong_sale = is_strong_sale; }
+  if (day) { day.sport = sport; day.day_type = day_type; }
   applyFilters();
   renderComparativa();
 };
@@ -868,6 +888,16 @@ function renderComparativa() {
   const sports = { futbol: 'Fútbol', beisbol: 'Béisbol / Softbol', otro: 'Otro / normal' };
   document.querySelector('#tblCompDeporte tbody').innerHTML = Object.entries(sports).map(([key, label]) => {
     const ids = ALL_DAYS.filter(d => (d.sport || 'otro') === key).map(d => d.id);
+    const s = statsForDays(ids);
+    return `<tr><td>${label}</td><td class="num">${s.dias}</td><td class="num">${money(s.venta)}</td>
+      <td class="num">${s.dias ? money(s.venta / s.dias) : '—'}</td>
+      <td class="num">${s.utilidad != null && s.dias ? moneyD(s.utilidad / s.dias) : '—'}</td>
+      <td class="num">${s.ticketProm != null ? moneyD(s.ticketProm) : '—'}</td></tr>`;
+  }).join('');
+
+  const categorias = { evento_especial: 'Evento especial', dia_partido: 'Día de partido', entrenamiento_normal: 'Entrenamiento normal' };
+  document.querySelector('#tblCompCategoria tbody').innerHTML = Object.entries(categorias).map(([key, label]) => {
+    const ids = ALL_DAYS.filter(d => (d.day_type || 'entrenamiento_normal') === key).map(d => d.id);
     const s = statsForDays(ids);
     return `<tr><td>${label}</td><td class="num">${s.dias}</td><td class="num">${money(s.venta)}</td>
       <td class="num">${s.dias ? money(s.venta / s.dias) : '—'}</td>
