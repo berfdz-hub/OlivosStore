@@ -186,3 +186,5 @@ td.num{font-family:'IBM Plex Mono'}
   main{padding-top:0}
   a[href]::after{content:""}
 }
+
+.hide{display:none !important}

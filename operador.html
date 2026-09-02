@@ -73,16 +73,37 @@
 
     <div class="card">
       <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:4px">Recibos del punto de venta</h3>
-      <p class="footnote" style="margin-bottom:12px">El CSV "receipts" exportado del POS.</p>
+      <p class="footnote" style="margin-bottom:12px">El CSV "receipts" exportado del POS. Puedes subir un archivo de <b>un solo día</b>, o uno que traiga <b>varios días mezclados</b> (ej. el mes completo) — la app los detecta y separa solos.</p>
       <input type="file" id="fCsv" accept=".csv,text/csv">
       <div id="csvSummary"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="cardInv">
       <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:4px">Conteo físico de inventario (opcional)</h3>
       <p class="footnote" style="margin-bottom:12px">Solo llena los productos que sí contaste al cierre. Los demás se dejan vacíos.</p>
       <div class="scroll">
         <table id="tblInv"><thead><tr><th>Producto</th><th style="width:140px">Conteo físico</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div class="card hide" id="cardMultiDay">
+      <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:4px">Días detectados en el archivo</h3>
+      <p class="footnote" style="margin-bottom:12px">El CSV trae varios días — dile a cada uno qué deporte fue y si es evento especial, día de partido normal, o entrenamiento. No se agregan partidos/estacionamiento ni conteo de inventario en este modo; si algún día necesita eso, lo editas después.</p>
+      <div style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:14px;background:var(--surface-2)">
+        <label style="margin-bottom:8px">Aplicar a todos los días de este archivo</label>
+        <div class="grid grid4" style="align-items:end">
+          <div class="field" style="margin-bottom:0"><select id="mdAllSport">
+            <option value="futbol">Fútbol</option><option value="beisbol">Béisbol / Softbol</option><option value="otro">Otro</option>
+          </select></div>
+          <div class="field" style="margin-bottom:0"><select id="mdAllCategoria">
+            <option value="evento_especial">Evento especial</option><option value="dia_partido">Día de partido</option><option value="entrenamiento_normal" selected>Entrenamiento normal</option>
+          </select></div>
+          <div class="field" style="margin-bottom:0"><input type="text" id="mdAllEvento" placeholder="Nombre del evento (opcional)"></div>
+          <button type="button" class="btn sec sm" id="btnApplyAll">Aplicar a todos</button>
+        </div>
+      </div>
+      <div class="scroll">
+        <table id="tblMultiDay"><thead><tr><th>Fecha</th><th class="num">Tickets</th><th class="num">Venta</th><th>Deporte</th><th>Categoría</th><th>Evento</th></tr></thead><tbody></tbody></table>
       </div>
     </div>
 
@@ -109,6 +130,7 @@ window.doLogout = signOut;
 
 let CATALOG = [];
 let PARSED_TICKETS = null;
+let PARSED_DAYS = null; // [{date, tickets:[], venta}] cuando el CSV trae mas de un dia
 
 function addGame(hora = '', ap = '', ac = '', cobra = true, nota = '') {
   const wrap = document.createElement('div');
@@ -193,6 +215,7 @@ async function init() {
 
   document.getElementById('fCsv').addEventListener('change', onCsvChange);
   document.getElementById('formDay').addEventListener('submit', onSubmit);
+  wireApplyAll();
 
   loadDays(profile);
   showWeekendNotice();
@@ -236,13 +259,90 @@ function onCsvChange(e) {
       if (unmatched.length) {
         html += `<div class="msg warn"><b>${unmatched.length} producto(s) no están en el catálogo</b> — se guardan igual pero sin costo asociado. Avísale al admin para agregarlos:<br>${unmatched.join(', ')}</div>`;
       }
+
+      const byDate = new Map();
+      tickets.forEach(t => {
+        const d = t.ts.slice(0, 10);
+        if (!byDate.has(d)) byDate.set(d, []);
+        byDate.get(d).push(t);
+      });
+      const distinctDates = [...byDate.keys()].sort();
+
+      if (distinctDates.length > 1) {
+        PARSED_DAYS = distinctDates.map(date => ({
+          date, tickets: byDate.get(date), venta: byDate.get(date).reduce((s, t) => s + t.amount, 0)
+        }));
+        html += `<div class="msg ok">Este archivo trae <b>${distinctDates.length} días distintos</b> (${distinctDates[0]} a ${distinctDates[distinctDates.length - 1]}) — clasifica cada uno abajo.</div>`;
+        renderMultiDayTable();
+        document.getElementById('cardMultiDay').classList.remove('hide');
+        document.getElementById('cardInv').classList.add('hide');
+        document.getElementById('btnSave').textContent = `Guardar ${distinctDates.length} días`;
+      } else {
+        PARSED_DAYS = null;
+        document.getElementById('cardMultiDay').classList.add('hide');
+        document.getElementById('cardInv').classList.remove('hide');
+        document.getElementById('btnSave').textContent = 'Guardar día';
+        if (distinctDates.length === 1 && distinctDates[0] !== document.getElementById('fDate').value) {
+          document.getElementById('fDate').value = distinctDates[0];
+          updateDayLabel();
+        }
+      }
       document.getElementById('csvSummary').innerHTML = html;
     } catch (err) {
-      PARSED_TICKETS = null;
+      PARSED_TICKETS = null; PARSED_DAYS = null;
+      document.getElementById('cardMultiDay').classList.add('hide');
       document.getElementById('csvSummary').innerHTML = `<div class="msg err">${err.message}</div>`;
     }
   };
   reader.readAsText(f, 'UTF-8');
+}
+
+function renderMultiDayTable() {
+  document.querySelector('#tblMultiDay tbody').innerHTML = PARSED_DAYS.map(d => `
+    <tr data-date="${d.date}">
+      <td>${d.date}</td><td class="num">${d.tickets.length}</td><td class="num">${money(d.venta)}</td>
+      <td><select class="mdSport">
+        <option value="futbol">Fútbol</option><option value="beisbol">Béisbol / Softbol</option><option value="otro" selected>Otro</option>
+      </select></td>
+      <td><select class="mdCategoria">
+        <option value="evento_especial">Evento especial</option><option value="dia_partido">Día de partido</option><option value="entrenamiento_normal" selected>Entrenamiento normal</option>
+      </select></td>
+      <td><input type="text" class="mdEvento" placeholder="opcional" style="min-width:140px"></td>
+    </tr>`).join('');
+}
+
+function wireApplyAll() {
+  document.getElementById('btnApplyAll').addEventListener('click', () => {
+    const sport = document.getElementById('mdAllSport').value;
+    const categoria = document.getElementById('mdAllCategoria').value;
+    const evento = document.getElementById('mdAllEvento').value.trim();
+    document.querySelectorAll('#tblMultiDay tbody tr').forEach(tr => {
+      tr.querySelector('.mdSport').value = sport;
+      tr.querySelector('.mdCategoria').value = categoria;
+      if (evento) tr.querySelector('.mdEvento').value = evento;
+    });
+  });
+}
+
+async function insertTicketsForDay(dayId, tickets) {
+  if (!tickets || !tickets.length) return;
+  const ticketRows = tickets.map(t => ({
+    sale_day_id: dayId, ticket_number: t.ticket_number, ts: t.ts,
+    amount: t.amount, payment_type: t.payment_type, raw_description: t.raw_description
+  }));
+  const { data: insertedTickets, error: tErr } = await supabase.from('tickets').insert(ticketRows).select('id');
+  if (tErr) throw new Error('Error guardando tickets: ' + tErr.message);
+
+  const itemRows = [];
+  insertedTickets.forEach((row, i) => {
+    tickets[i].items.forEach(it => {
+      itemRows.push({ ticket_id: row.id, product_id: it.product_id, product_name_raw: it.raw, qty: it.qty });
+    });
+  });
+  if (itemRows.length) {
+    const { error: iErr } = await supabase.from('ticket_items').insert(itemRows);
+    if (iErr) throw new Error('Error guardando productos de los tickets: ' + iErr.message);
+  }
 }
 
 async function onSubmit(e) {
@@ -251,68 +351,96 @@ async function onSubmit(e) {
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Guardando...';
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    const date = document.getElementById('fDate').value;
-    const sport = document.getElementById('fSport').value;
-    const rate = parseFloat(document.getElementById('fRate').value) || 0;
-    const notes = document.getElementById('fNotes').value.trim();
-    const games = getGames();
-
-    const { data: day, error: dayErr } = await supabase.from('sale_days').insert({
-      date, sport, notes: notes || null, status: 'submitted', created_by: session.user.id
-    }).select().single();
-    if (dayErr) throw new Error('No pude crear el día (¿ya existe una captura para esa fecha?): ' + dayErr.message);
-
-    if (games.length) {
-      const gamesRows = games.map(g => ({
-        sale_day_id: day.id, start_time: g.hora, cars_parked: g.ap, cars_charged: g.ac,
-        parking_rate: rate, charges_parking: g.cobra, notes: g.nota || null
-      }));
-      const { error: gErr } = await supabase.from('games').insert(gamesRows);
-      if (gErr) throw new Error('Error guardando partidos: ' + gErr.message);
+    if (PARSED_DAYS && PARSED_DAYS.length > 1) {
+      await submitMultiDay(session);
+    } else {
+      await submitSingleDay(session);
     }
-
-    if (PARSED_TICKETS && PARSED_TICKETS.length) {
-      const ticketRows = PARSED_TICKETS.map(t => ({
-        sale_day_id: day.id, ticket_number: t.ticket_number, ts: t.ts,
-        amount: t.amount, payment_type: t.payment_type, raw_description: t.raw_description
-      }));
-      const { data: insertedTickets, error: tErr } = await supabase.from('tickets').insert(ticketRows).select('id');
-      if (tErr) throw new Error('Error guardando tickets: ' + tErr.message);
-
-      const itemRows = [];
-      insertedTickets.forEach((row, i) => {
-        PARSED_TICKETS[i].items.forEach(it => {
-          itemRows.push({ ticket_id: row.id, product_id: it.product_id, product_name_raw: it.raw, qty: it.qty });
-        });
-      });
-      if (itemRows.length) {
-        const { error: iErr } = await supabase.from('ticket_items').insert(itemRows);
-        if (iErr) throw new Error('Error guardando productos de los tickets: ' + iErr.message);
-      }
-    }
-
-    const invRows = [...document.querySelectorAll('.invCount')]
-      .filter(inp => inp.value !== '')
-      .map(inp => ({ sale_day_id: day.id, product_id: inp.dataset.pid, physical_count: parseInt(inp.value) }));
-    if (invRows.length) {
-      const { error: invErr } = await supabase.from('inventory_counts').insert(invRows);
-      if (invErr) throw new Error('Error guardando conteo de inventario: ' + invErr.message);
-    }
-
-    msg('ok', `Día ${date} guardado correctamente.`);
-    document.getElementById('formDay').reset();
-    document.getElementById('fDate').value = new Date().toISOString().slice(0, 10);
-    updateDayLabel();
-    document.getElementById('games').innerHTML = ''; addGame();
-    document.getElementById('csvSummary').innerHTML = '';
-    PARSED_TICKETS = null;
     const profile = await getCurrentProfile();
     loadDays(profile);
   } catch (err) {
     msg('err', err.message);
   } finally {
-    btn.disabled = false; btn.textContent = 'Guardar día';
+    btn.disabled = false; btn.textContent = PARSED_DAYS && PARSED_DAYS.length > 1 ? `Guardar ${PARSED_DAYS.length} días` : 'Guardar día';
   }
+}
+
+async function submitSingleDay(session) {
+  const date = document.getElementById('fDate').value;
+  const sport = document.getElementById('fSport').value;
+  const rate = parseFloat(document.getElementById('fRate').value) || 0;
+  const notes = document.getElementById('fNotes').value.trim();
+  const games = getGames();
+
+  const { data: day, error: dayErr } = await supabase.from('sale_days').insert({
+    date, sport, notes: notes || null, status: 'submitted', created_by: session.user.id
+  }).select().single();
+  if (dayErr) throw new Error('No pude crear el día (¿ya existe una captura para esa fecha?): ' + dayErr.message);
+
+  if (games.length) {
+    const gamesRows = games.map(g => ({
+      sale_day_id: day.id, start_time: g.hora, cars_parked: g.ap, cars_charged: g.ac,
+      parking_rate: rate, charges_parking: g.cobra, notes: g.nota || null
+    }));
+    const { error: gErr } = await supabase.from('games').insert(gamesRows);
+    if (gErr) throw new Error('Error guardando partidos: ' + gErr.message);
+  }
+
+  await insertTicketsForDay(day.id, PARSED_TICKETS);
+
+  const invRows = [...document.querySelectorAll('.invCount')]
+    .filter(inp => inp.value !== '')
+    .map(inp => ({ sale_day_id: day.id, product_id: inp.dataset.pid, physical_count: parseInt(inp.value) }));
+  if (invRows.length) {
+    const { error: invErr } = await supabase.from('inventory_counts').insert(invRows);
+    if (invErr) throw new Error('Error guardando conteo de inventario: ' + invErr.message);
+  }
+
+  msg('ok', `Día ${date} guardado correctamente.`);
+  resetForm();
+}
+
+async function submitMultiDay(session) {
+  const rows = [...document.querySelectorAll('#tblMultiDay tbody tr')];
+  const results = [];
+  for (const tr of rows) {
+    const date = tr.dataset.date;
+    const sport = tr.querySelector('.mdSport').value;
+    const day_type = tr.querySelector('.mdCategoria').value;
+    const event_name = tr.querySelector('.mdEvento').value.trim() || null;
+    const dayData = PARSED_DAYS.find(d => d.date === date);
+    try {
+      const { data: day, error: dayErr } = await supabase.from('sale_days').insert({
+        date, sport, day_type, event_name, status: 'submitted', created_by: session.user.id
+      }).select().single();
+      if (dayErr) throw new Error(dayErr.message);
+      await insertTicketsForDay(day.id, dayData.tickets);
+      results.push({ date, ok: true });
+    } catch (err) {
+      results.push({ date, ok: false, error: err.message });
+    }
+  }
+  const okCount = results.filter(r => r.ok).length;
+  const failed = results.filter(r => !r.ok);
+  let html = `<div class="msg ${failed.length ? 'warn' : 'ok'}"><b>${okCount} de ${results.length} días guardados.</b></div>`;
+  if (failed.length) {
+    html += `<div class="msg err">No se pudieron guardar: ${failed.map(f => `${f.date} (${f.error})`).join('; ')}. Es probable que ya existieran — revisa el historial.</div>`;
+  }
+  document.getElementById('msgBox').innerHTML = html;
+  if (okCount > 0) resetForm();
+}
+
+function resetForm() {
+  document.getElementById('formDay').reset();
+  document.getElementById('fDate').value = new Date().toISOString().slice(0, 10);
+  updateDayLabel();
+  document.getElementById('games').innerHTML = ''; addGame();
+  document.getElementById('csvSummary').innerHTML = '';
+  document.getElementById('cardMultiDay').classList.add('hide');
+  document.getElementById('cardInv').classList.remove('hide');
+  document.getElementById('btnSave').textContent = 'Guardar día';
+  PARSED_TICKETS = null;
+  PARSED_DAYS = null;
 }
 
 async function loadDays(profile) {
