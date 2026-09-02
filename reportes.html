@@ -144,13 +144,11 @@
       <div class="scroll"><table id="tblProdRank"><thead><tr><th>Producto</th><th class="num">Uds.</th><th class="num">Tickets</th><th class="num">Venta</th><th class="num">Costo</th><th class="num">Margen</th><th class="num">Utilidad</th></tr></thead><tbody></tbody></table></div>
     </div>
 
-    <div class="admin-only">
     <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 4px">Productos sin costo registrado</h3>
-    <p class="footnote">No se les conoce el costo de compra, así que no cuentan en ningún cálculo de margen o utilidad del resto de la app (para no inflarlos ni contaminarlos) — pero aquí se reportan sus ventas para que no queden ocultos. Captúrales el costo en <a href="#" onclick="document.querySelector('[data-tab=catalogo]')?.click();return false">Catálogo</a> en cuanto lo sepas.</p>
+    <p class="footnote" id="sinCostoHint">No se les conoce el costo de compra, así que no cuentan en ningún cálculo de margen o utilidad del resto de la app (para no inflarlos ni contaminarlos) — pero aquí se reportan sus ventas para que no queden ocultos.</p>
     <div class="card" style="margin-top:10px">
       <div id="sinCostoTotal" class="footnote" style="margin-bottom:8px"></div>
       <div class="scroll"><table id="tblSinCosto"><thead><tr><th>Producto</th><th class="num">Uds.</th><th class="num">Tickets</th><th class="num">Venta</th></tr></thead><tbody></tbody></table></div>
-    </div>
     </div>
     <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 4px">Venta por categoría</h3>
     <div class="card" style="margin-top:10px" id="catbars"></div>
@@ -390,16 +388,14 @@ async function init() {
     const { data: settings } = await supabase.from('app_settings').select('operators_see_all_days').single();
     if (settings && !settings.operators_see_all_days) {
       const note = document.createElement('div');
-      note.className = 'msg warn noprint';
+      note.className = 'msg noprint';
       note.style.marginTop = '12px';
-      note.textContent = 'Tu cuenta solo puede ver el día más reciente capturado. Si necesitas ver días anteriores, pídele a un administrador que active "Los operadores ven el historial completo" en Usuarios.';
+      note.textContent = 'Ves todo (días, partidos, tickets, dinero y utilidad) de los últimos 31 días, y de cualquier día marcado como "evento especial" aunque sea más viejo. Fuera de eso no ves nada de ese día. Si necesitas ver más historial, pídele a un administrador que active "Los operadores ven el historial completo" en Usuarios.';
       document.querySelector('main.wrap > .card').after(note);
     }
-    const moneyNote = document.createElement('div');
-    moneyNote.className = 'msg noprint';
-    moneyNote.style.marginTop = '12px';
-    moneyNote.textContent = 'Ves montos en dinero (venta, ticket promedio, utilidad) solo de los últimos 31 días. Antes de eso solo ves unidades y cantidades. Los comparativos "Por mes" y "Por año" son solo para administración.';
-    document.querySelector('main.wrap > .card').after(moneyNote);
+  } else {
+    const hint = document.getElementById('sinCostoHint');
+    if (hint) hint.innerHTML += ' Captúrales el costo en <a href="#" onclick="document.querySelector(\'[data-tab=catalogo]\').click();return false">Catálogo</a> en cuanto lo sepas.';
   }
 
   const today = new Date();
@@ -601,11 +597,10 @@ function renderResumen() {
   const monoTickets = TICKETS.filter(t => (skusPorTicket.get(t.id) || 0) <= 1).length;
   const ventaSinCosto = venta - ventaConCosto;
 
-  const kpis = [['Venta total', money(venta)]];
-  if (IS_ADMIN) {
-    kpis.push(['Venta con costo', moneyD(ventaConCosto)], ['Venta sin costo', moneyD(ventaSinCosto)]);
-  }
-  kpis.push(
+  const kpis = [
+    ['Venta total', money(venta)],
+    ['Venta con costo', moneyD(ventaConCosto)],
+    ['Venta sin costo', moneyD(ventaSinCosto)],
     ['Utilidad (costo conocido)', margen != null ? moneyD(utilidad) : '—'],
     ['Margen', margen != null ? margen.toFixed(1) + '%' : '—'],
     ['Tickets', n],
@@ -614,12 +609,12 @@ function renderResumen() {
     ['Unidades / ticket', n ? (uds / n).toFixed(2) : '—'],
     ['Tickets de 1 producto', n ? Math.round(monoTickets / n * 100) + '%' : '—'],
     ['Días capturados', DAYS.length],
-  );
+  ];
   document.getElementById('kpis').innerHTML = kpis.map(([l, v]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join('');
 
   const noteEl = document.getElementById('sinCostoNote');
   if (noteEl) {
-    noteEl.innerHTML = (IS_ADMIN && ventaSinCosto > 1)
+    noteEl.innerHTML = (ventaSinCosto > 1)
       ? `<div class="msg warn">La "Venta sin costo" no cuenta en la Utilidad ni el Margen de arriba, para no inflarlos ni contaminarlos. Detalle producto por producto en la pestaña <a href="#" onclick="document.querySelector('[data-tab=productos]').click();return false">Productos → Productos sin costo registrado</a>.</div>`
       : '';
   }
