@@ -90,11 +90,13 @@ create policy "products_delete_admin" on public.products
 -- vista pública: cualquier usuario autenticado la usa para los formularios
 -- de captura; el costo de compra viaja como NULL si no eres admin.
 create view public.products_view
-with (security_invoker = true) as
+with (security_invoker = false) as
 select
   id, name, category, sell_price, active,
   case when public.is_admin() then cost_price else null end as cost_price
 from public.products;
+
+grant select on public.products_view to authenticated;
 
 grant select on public.products_view to authenticated;
 

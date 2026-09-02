@@ -71,13 +71,18 @@ as $$
   select max(date) from public.sale_days;
 $$;
 
--- 3. la vista de productos ya usa can_see_costs() (por si no quedo de un intento previo)
+-- 3. la vista de productos ya usa can_see_costs() (por si no quedo de un intento previo).
+--    security_invoker=false para que la vista pueda leer la tabla de
+--    abajo aunque el que consulta no sea admin (si no, un operador
+--    siempre recibia una lista vacia de productos).
 create or replace view public.products_view
-with (security_invoker = true) as
+with (security_invoker = false) as
 select
   id, name, category, sell_price, active,
   case when public.can_see_costs() then cost_price else null end as cost_price
 from public.products;
+
+grant select on public.products_view to authenticated;
 
 -- 4. restringe sale_days y todo lo que cuelga de un dia a "solo el mas
 --    reciente" cuando el interruptor de historial esta apagado.
