@@ -86,7 +86,7 @@
     </div>
     <div class="card" style="margin-top:16px">
       <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:12px">Días en el periodo</h3>
-      <div class="scroll"><table id="tblDaysAdmin"><thead><tr><th>Fecha</th><th>Deporte</th><th class="num">Tickets</th><th class="num">Venta</th><th>Estado</th><th>Capturado por</th></tr></thead><tbody></tbody></table></div>
+      <div class="scroll"><table id="tblDaysAdmin"><thead><tr><th>Fecha</th><th>Deporte</th><th class="num">Tickets</th><th class="num">Venta</th><th>Estado</th><th>Capturado por</th><th></th></tr></thead><tbody></tbody></table></div>
     </div>
   </div>
 
@@ -778,12 +778,35 @@ function renderDaysTable() {
     ticketsByDay.set(t.sale_day_id, (ticketsByDay.get(t.sale_day_id) || { n: 0, v: 0 }));
     const o = ticketsByDay.get(t.sale_day_id); o.n++; o.v += Number(t.amount);
   });
+  const sportLabel = { futbol: 'Fútbol', beisbol: 'Béisbol / Softbol', otro: 'Otro / normal' };
   document.querySelector('#tblDaysAdmin tbody').innerHTML = DAYS.map(d => {
     const o = ticketsByDay.get(d.id) || { n: 0, v: 0 };
-    return `<tr><td>${d.date}</td><td>${d.sport || '—'}</td><td class="num">${o.n}</td><td class="num">${money(o.v)}</td>
-      <td><span class="chip ${d.status}">${d.status}</span></td><td>${d.profiles ? d.profiles.full_name || '—' : '—'}</td></tr>`;
-  }).join('') || '<tr><td colspan="6">Sin días en el periodo.</td></tr>';
+    const sportCell = IS_ADMIN
+      ? `<select class="edSport" data-day="${d.id}" style="min-width:150px">
+           <option value="futbol" ${d.sport === 'futbol' ? 'selected' : ''}>Fútbol</option>
+           <option value="beisbol" ${d.sport === 'beisbol' ? 'selected' : ''}>Béisbol / Softbol</option>
+           <option value="otro" ${(!d.sport || d.sport === 'otro') ? 'selected' : ''}>Otro / normal</option>
+         </select>`
+      : (sportLabel[d.sport] || d.sport || '—');
+    return `<tr><td>${d.date}</td><td>${sportCell}</td><td class="num">${o.n}</td><td class="num">${money(o.v)}</td>
+      <td><span class="chip ${d.status}">${d.status}</span></td><td>${d.profiles ? d.profiles.full_name || '—' : '—'}</td>
+      <td class="noprint">${IS_ADMIN ? `<button class="btn sec sm" type="button" onclick="window.__saveDaySport('${d.id}', this)">Guardar</button>` : ''}</td></tr>`;
+  }).join('') || '<tr><td colspan="7">Sin días en el periodo.</td></tr>';
 }
+
+window.__saveDaySport = async (dayId, btn) => {
+  const tr = btn.closest('tr');
+  const sport = tr.querySelector('.edSport').value;
+  btn.disabled = true;
+  const { error } = await supabase.from('sale_days').update({ sport }).eq('id', dayId);
+  btn.disabled = false;
+  if (error) { gmsg('err', 'No pude guardar el deporte: ' + error.message); return; }
+  gmsg('ok', 'Deporte actualizado.');
+  const day = ALL_DAYS.find(d => d.id === dayId);
+  if (day) day.sport = sport;
+  applyFilters();
+  renderComparativa();
+};
 
 // ---------------- comparativa ----------------
 function statsForDays(dayIds) {
