@@ -28,6 +28,8 @@
 </div>
 
 <main class="wrap">
+  <div id="weekendNotice"></div>
+
   <div class="eyebrow">Captura de datos</div>
   <h2 class="section-title">Nuevo día de venta</h2>
   <p class="footnote" style="margin-top:6px">Llena la fecha, los partidos, sube el CSV de recibos y (si tienes) el conteo físico de algunos productos. Al guardar, todo queda en la base de datos para los reportes del administrador.</p>
@@ -193,6 +195,30 @@ async function init() {
   document.getElementById('formDay').addEventListener('submit', onSubmit);
 
   loadDays(profile);
+  showWeekendNotice();
+}
+
+async function showWeekendNotice() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const iso = d => d.toISOString().slice(0, 10);
+  const dow = today.getDay();
+  const satOffset = dow === 6 ? 0 : (dow === 0 ? -1 : 6 - dow);
+  const sat = new Date(today); sat.setDate(today.getDate() + satOffset);
+  const sun = new Date(sat); sun.setDate(sat.getDate() + 1);
+  const satISO = iso(sat), sunISO = iso(sun);
+
+  const { data, error } = await supabase.from('scheduled_games')
+    .select('date, start_time, sport, notes').in('date', [satISO, sunISO]).order('start_time');
+  const el = document.getElementById('weekendNotice');
+  if (error || !data) { el.innerHTML = ''; return; }
+  const sportLabel = { futbol: 'Fútbol', beisbol: 'Béisbol / Softbol', otro: 'Otro' };
+  if (data.length) {
+    el.innerHTML = `<div class="msg ok">Este fin de semana (${satISO} y ${sunISO}) hay <b>${data.length}</b> partido(s) agendado(s): ${
+      data.map(g => `${g.date === satISO ? 'sáb' : 'dom'} ${g.start_time} ${sportLabel[g.sport] || g.sport}${g.notes ? ' — ' + g.notes : ''}`).join('; ')
+    }. <a href="reportes.html">Ver/editar calendario</a></div>`;
+  } else {
+    el.innerHTML = `<div class="msg warn">No hay partidos agendados para este fin de semana todavía. <a href="reportes.html">Agendar en el calendario</a></div>`;
+  }
 }
 
 function onCsvChange(e) {

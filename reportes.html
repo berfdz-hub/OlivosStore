@@ -30,6 +30,7 @@
 
 <div class="tabbar noprint" id="tabbar">
   <button class="on" data-tab="resumen">Resumen</button>
+  <button data-tab="calendario">Calendario</button>
   <button data-tab="productos">Productos</button>
   <button data-tab="calor">Mapa de calor</button>
   <button data-tab="combos">Combos</button>
@@ -93,6 +94,32 @@
     <div class="card" style="margin-top:16px">
       <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:12px">Días en el periodo</h3>
       <div class="scroll"><table id="tblDaysAdmin"><thead><tr><th>Fecha</th><th>Deporte</th><th>Categoría</th><th class="num">Tickets</th><th class="num">Venta</th><th>Estado</th><th>Capturado por</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-calendario">
+    <h2 class="section-title" style="margin-top:20px">Calendario de partidos</h2>
+    <p class="footnote" style="margin-top:6px">Agenda partidos con anticipación (no necesitas tener capturada la venta de ese día todavía) para que la app avise cuántos hay agendados.</p>
+    <div id="calMsg"></div>
+    <div class="card noprint" style="margin-top:14px">
+      <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin-bottom:10px">Agendar partido</h3>
+      <form id="formSchedGame" class="grid grid4">
+        <div class="field" style="margin-bottom:0"><label>Fecha</label><input type="date" id="sgDate" required></div>
+        <div class="field" style="margin-bottom:0"><label>Hora</label><input type="time" id="sgTime" required></div>
+        <div class="field" style="margin-bottom:0"><label>Deporte</label>
+          <select id="sgSport"><option value="futbol">Fútbol</option><option value="beisbol">Béisbol / Softbol</option><option value="otro">Otro</option></select>
+        </div>
+        <div class="field" style="margin-bottom:0"><label>Nota (opcional)</label><input type="text" id="sgNotes" placeholder="ej. vs. equipo tal"></div>
+        <div style="grid-column:1/-1"><button class="btn sm" type="submit">Agendar</button></div>
+      </form>
+    </div>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Próximo fin de semana</h3>
+    <div id="weekendNotice"></div>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Todos los partidos agendados</h3>
+    <div class="card">
+      <div class="scroll"><table id="tblSchedGames"><thead><tr><th>Fecha</th><th>Hora</th><th>Deporte</th><th>Nota</th><th>Agendado por</th><th class="noprint"></th></tr></thead><tbody></tbody></table></div>
     </div>
   </div>
 
@@ -358,9 +385,12 @@ async function init() {
     applyFilters();
   }));
   document.getElementById('coberturaDias').addEventListener('input', renderCompras);
+  document.getElementById('formSchedGame').addEventListener('submit', addScheduledGame);
+  document.getElementById('sgDate').value = new Date().toISOString().slice(0, 10);
 
   await loadAll();
   if (IS_ADMIN) { await loadCatalogFull(); await loadUsers(); }
+  await loadScheduledGames();
 }
 
 // Supabase/PostgREST corta cada consulta a 1000 filas por default.
@@ -968,6 +998,72 @@ function renderCompras() {
       <td class="num ${r.sugerido ? 'pos' : ''}">${r.sugerido != null ? r.sugerido : 'sin dato de existencia'}</td></tr>
   `).join('') || '<tr><td colspan="5">Sin ventas en el periodo filtrado.</td></tr>';
 }
+
+// ---------------- calendario de partidos ----------------
+function toISODate(d) { return d.toISOString().slice(0, 10); }
+
+function nextWeekendRange() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dow = today.getDay(); // 0=domingo .. 6=sabado
+  const satOffset = dow === 6 ? 0 : (dow === 0 ? -1 : 6 - dow);
+  const sat = new Date(today); sat.setDate(today.getDate() + satOffset);
+  const sun = new Date(sat); sun.setDate(sat.getDate() + 1);
+  return { sat: toISODate(sat), sun: toISODate(sun) };
+}
+
+async function loadScheduledGames() {
+  const { data, error } = await supabase
+    .from('scheduled_games')
+    .select('id, date, start_time, sport, notes, created_by, profiles(full_name)')
+    .order('date').order('start_time');
+  if (error) { document.getElementById('calMsg').innerHTML = `<div class="msg err">No pude cargar el calendario: ${error.message}</div>`; return; }
+
+  const sportLabel = { futbol: 'Fútbol', beisbol: 'Béisbol / Softbol', otro: 'Otro' };
+  const today = toISODate(new Date());
+  const upcoming = data.filter(g => g.date >= today);
+
+  document.querySelector('#tblSchedGames tbody').innerHTML = data.map(g => `
+    <tr><td>${g.date}</td><td>${g.start_time}</td><td>${sportLabel[g.sport] || g.sport}</td>
+      <td>${g.notes || '—'}</td><td>${g.profiles ? g.profiles.full_name || '—' : '—'}</td>
+      <td class="noprint"><button class="btn sec sm" type="button" onclick="window.__delSchedGame('${g.id}')">Quitar</button></td></tr>
+  `).join('') || '<tr><td colspan="6">Sin partidos agendados.</td></tr>';
+
+  const { sat, sun } = nextWeekendRange();
+  const thisWeekend = upcoming.filter(g => g.date === sat || g.date === sun);
+  const wEl = document.getElementById('weekendNotice');
+  if (thisWeekend.length) {
+    wEl.innerHTML = `<div class="msg ok">Este fin de semana (${sat} y ${sun}) hay <b>${thisWeekend.length}</b> partido(s) agendado(s): ${
+      thisWeekend.map(g => `${g.date === sat ? 'sáb' : 'dom'} ${g.start_time} ${sportLabel[g.sport] || g.sport}${g.notes ? ' — ' + g.notes : ''}`).join('; ')
+    }.</div>`;
+  } else {
+    wEl.innerHTML = `<div class="msg warn">No hay partidos agendados para este fin de semana (${sat} y ${sun}) todavía.</div>`;
+  }
+}
+
+async function addScheduledGame(e) {
+  e.preventDefault();
+  const { data: { session } } = await supabase.auth.getSession();
+  const payload = {
+    date: document.getElementById('sgDate').value,
+    start_time: document.getElementById('sgTime').value,
+    sport: document.getElementById('sgSport').value,
+    notes: document.getElementById('sgNotes').value.trim() || null,
+    created_by: session.user.id,
+  };
+  const { error } = await supabase.from('scheduled_games').insert(payload);
+  if (error) { document.getElementById('calMsg').innerHTML = `<div class="msg err">No pude agendar: ${error.message}</div>`; return; }
+  document.getElementById('formSchedGame').reset();
+  document.getElementById('sgDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('calMsg').innerHTML = `<div class="msg ok">Partido agendado.</div>`;
+  loadScheduledGames();
+}
+
+window.__delSchedGame = async (id) => {
+  if (!confirm('¿Quitar este partido del calendario?')) return;
+  const { error } = await supabase.from('scheduled_games').delete().eq('id', id);
+  if (error) { document.getElementById('calMsg').innerHTML = `<div class="msg err">No pude quitarlo: ${error.message}</div>`; return; }
+  loadScheduledGames();
+};
 
 // ---------------- catálogo ----------------
 async function loadCatalogFull() {
