@@ -610,10 +610,12 @@ function renderResumen() {
   document.getElementById('kpis').innerHTML = kpis.map(([l, v]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join('');
 
   const ventaSinCosto = venta - ventaConCosto;
+  const pctConCosto = venta ? Math.round(ventaConCosto / venta * 100) : 0;
+  const pctSinCosto = venta ? Math.round(ventaSinCosto / venta * 100) : 0;
   const noteEl = document.getElementById('sinCostoNote');
   if (noteEl) {
     noteEl.innerHTML = (IS_ADMIN && ventaSinCosto > 1)
-      ? `<div class="msg warn">${moneyD(ventaSinCosto)} en venta (${venta ? Math.round(ventaSinCosto / venta * 100) : 0}% del periodo) es de productos sin costo registrado — no cuentan en la Utilidad ni el Margen de arriba, para no inflarlos ni contaminarlos. Detalle en la pestaña <a href="#" onclick="document.querySelector('[data-tab=productos]').click();return false">Productos → Productos sin costo registrado</a>.</div>`
+      ? `<div class="msg warn">De ${moneyD(venta)} en venta total: <b>${moneyD(ventaConCosto)} (${pctConCosto}%)</b> es de productos con costo conocido — eso es lo que arma la Utilidad y el Margen de arriba — y <b>${moneyD(ventaSinCosto)} (${pctSinCosto}%)</b> es de productos sin costo registrado, que no entran en esos dos. Detalle en la pestaña <a href="#" onclick="document.querySelector('[data-tab=productos]').click();return false">Productos → Productos sin costo registrado</a>.</div>`
       : '';
   }
 
