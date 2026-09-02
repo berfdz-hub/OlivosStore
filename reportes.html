@@ -213,14 +213,18 @@
       <div class="scroll"><table id="tblCompEvento"><thead><tr><th>Evento</th><th>Deporte</th><th>Categoría</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Venta prom./día</th><th class="num">Utilidad</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
     </div>
 
+    <div class="admin-only">
     <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por mes</h3>
+    <p class="footnote">Solo administración — cruza el límite de un mes que puede ver un operador.</p>
     <div class="card">
       <div class="scroll"><table id="tblCompMes"><thead><tr><th>Mes</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Utilidad</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
     </div>
 
     <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por año</h3>
+    <p class="footnote">Solo administración — cruza el límite de un mes que puede ver un operador.</p>
     <div class="card">
       <div class="scroll"><table id="tblCompAnio"><thead><tr><th>Año</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Utilidad</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
+    </div>
     </div>
   </div>
 
@@ -394,7 +398,7 @@ async function init() {
     const moneyNote = document.createElement('div');
     moneyNote.className = 'msg noprint';
     moneyNote.style.marginTop = '12px';
-    moneyNote.textContent = 'Solo ves unidades y cantidades — los montos en dinero (venta, ticket promedio, utilidad) están ocultos, excepto en los días que un admin marque como "venta fuerte" en la tabla de días.';
+    moneyNote.textContent = 'Ves montos en dinero (venta, ticket promedio, utilidad) solo de los últimos 31 días. Antes de eso solo ves unidades y cantidades. Los comparativos "Por mes" y "Por año" son solo para administración.';
     document.querySelector('main.wrap > .card').after(moneyNote);
   }
 
@@ -595,9 +599,13 @@ function renderResumen() {
   const skusPorTicket = new Map();
   ITEMS.forEach(it => { skusPorTicket.set(it.ticket_id, (skusPorTicket.get(it.ticket_id) || 0) + 1); });
   const monoTickets = TICKETS.filter(t => (skusPorTicket.get(t.id) || 0) <= 1).length;
+  const ventaSinCosto = venta - ventaConCosto;
 
-  const kpis = [
-    ['Venta total', money(venta)],
+  const kpis = [['Venta total', money(venta)]];
+  if (IS_ADMIN) {
+    kpis.push(['Venta con costo', moneyD(ventaConCosto)], ['Venta sin costo', moneyD(ventaSinCosto)]);
+  }
+  kpis.push(
     ['Utilidad (costo conocido)', margen != null ? moneyD(utilidad) : '—'],
     ['Margen', margen != null ? margen.toFixed(1) + '%' : '—'],
     ['Tickets', n],
@@ -606,16 +614,13 @@ function renderResumen() {
     ['Unidades / ticket', n ? (uds / n).toFixed(2) : '—'],
     ['Tickets de 1 producto', n ? Math.round(monoTickets / n * 100) + '%' : '—'],
     ['Días capturados', DAYS.length],
-  ];
+  );
   document.getElementById('kpis').innerHTML = kpis.map(([l, v]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join('');
 
-  const ventaSinCosto = venta - ventaConCosto;
-  const pctConCosto = venta ? Math.round(ventaConCosto / venta * 100) : 0;
-  const pctSinCosto = venta ? Math.round(ventaSinCosto / venta * 100) : 0;
   const noteEl = document.getElementById('sinCostoNote');
   if (noteEl) {
     noteEl.innerHTML = (IS_ADMIN && ventaSinCosto > 1)
-      ? `<div class="msg warn">De ${moneyD(venta)} en venta total: <b>${moneyD(ventaConCosto)} (${pctConCosto}%)</b> es de productos con costo conocido — eso es lo que arma la Utilidad y el Margen de arriba — y <b>${moneyD(ventaSinCosto)} (${pctSinCosto}%)</b> es de productos sin costo registrado, que no entran en esos dos. Detalle en la pestaña <a href="#" onclick="document.querySelector('[data-tab=productos]').click();return false">Productos → Productos sin costo registrado</a>.</div>`
+      ? `<div class="msg warn">La "Venta sin costo" no cuenta en la Utilidad ni el Margen de arriba, para no inflarlos ni contaminarlos. Detalle producto por producto en la pestaña <a href="#" onclick="document.querySelector('[data-tab=productos]').click();return false">Productos → Productos sin costo registrado</a>.</div>`
       : '';
   }
 
