@@ -167,7 +167,13 @@
 
   <div class="pane" id="pane-comparativa">
     <h2 class="section-title" style="margin-top:20px">Comparativa</h2>
-    <p class="footnote" style="margin-top:6px">Promedios por segmento y por periodo, calculados sobre el rango de fechas de arriba (sin importar los filtros de tipo de día / partido / deporte, porque aquí es donde se comparan entre sí).</p>
+    <p class="footnote" style="margin-top:6px">Las tablas de esta pestaña (menos la de abajo) comparan sobre el rango de fechas completo, sin importar los filtros de tipo de día / partido / deporte / evento, porque aquí es donde se comparan entre sí.</p>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Detalle día por día</h3>
+    <p class="footnote">Esta sí respeta los filtros de arriba — usa <b>"Evento específico"</b> para ver el día 1, día 2, día 3... de un solo torneo.</p>
+    <div class="card" style="margin-top:10px">
+      <div class="scroll"><table id="tblDiaPorDia"><thead><tr><th>#</th><th>Fecha</th><th class="num">Tickets</th><th class="num">Venta</th><th class="num">Utilidad</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
+    </div>
 
     <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Entre semana vs. fin de semana</h3>
     <div class="card">
@@ -194,7 +200,7 @@
     <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por evento</h3>
     <p class="footnote">Cada evento especial o día de partido, uno por fila (los eventos de varios días se agrupan si les pones el mismo nombre en "Evento" en la tabla de días). Usa el filtro "Evento específico" de arriba para ver el detalle de productos de uno solo.</p>
     <div class="card" style="margin-top:10px">
-      <div class="scroll"><table id="tblCompEvento"><thead><tr><th>Evento</th><th>Deporte</th><th>Categoría</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Utilidad</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
+      <div class="scroll"><table id="tblCompEvento"><thead><tr><th>Evento</th><th>Deporte</th><th>Categoría</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Venta prom./día</th><th class="num">Utilidad</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
     </div>
 
     <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por mes</h3>
@@ -545,6 +551,20 @@ function renderAll() {
   renderEstacionamiento();
   renderDaysTable();
   renderCompras();
+  renderDiaPorDia();
+}
+
+function renderDiaPorDia() {
+  const tbl = document.getElementById('tblDiaPorDia');
+  if (!tbl) return;
+  const sorted = [...DAYS].sort((a, b) => a.date.localeCompare(b.date));
+  tbl.querySelector('tbody').innerHTML = sorted.map((d, i) => {
+    const s = statsForDays([d.id]);
+    return `<tr><td class="num">${i + 1}</td><td>${d.date}</td><td class="num">${s.tickets}</td>
+      <td class="num">${money(s.venta)}</td>
+      <td class="num">${s.utilidad != null ? moneyD(s.utilidad) : '—'}</td>
+      <td class="num">${s.ticketProm != null ? moneyD(s.ticketProm) : '—'}</td></tr>`;
+  }).join('') || '<tr><td colspan="6">Sin días en el filtro actual.</td></tr>';
 }
 
 function renderResumen() {
@@ -1011,9 +1031,10 @@ function renderComparativa() {
     return `<tr><td>${e.label}</td><td>${[...e.sports].map(sp => sportLabelComp[sp] || sp).join(', ')}</td>
       <td>${[...e.types].map(t => catLabelShort[t]).join(', ')}</td>
       <td class="num">${s.dias}</td><td class="num">${money(s.venta)}</td>
+      <td class="num">${s.dias ? money(s.venta / s.dias) : '—'}</td>
       <td class="num">${s.utilidad != null ? moneyD(s.utilidad) : '—'}</td>
       <td class="num">${s.ticketProm != null ? moneyD(s.ticketProm) : '—'}</td></tr>`;
-  }).join('') || '<tr><td colspan="7">Sin eventos o días de partido en el periodo.</td></tr>';
+  }).join('') || '<tr><td colspan="8">Sin eventos o días de partido en el periodo.</td></tr>';
 
   const byMonth = new Map();
   ALL_DAYS.forEach(d => { const k = d.date.slice(0, 7); if (!byMonth.has(k)) byMonth.set(k, []); byMonth.get(k).push(d.id); });
