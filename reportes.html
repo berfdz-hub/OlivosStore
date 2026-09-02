@@ -86,7 +86,7 @@
     </div>
     <div class="card" style="margin-top:16px">
       <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:12px">Días en el periodo</h3>
-      <div class="scroll"><table id="tblDaysAdmin"><thead><tr><th>Fecha</th><th>Deporte</th><th class="num">Tickets</th><th class="num">Venta</th><th>Estado</th><th>Capturado por</th><th></th></tr></thead><tbody></tbody></table></div>
+      <div class="scroll"><table id="tblDaysAdmin"><thead><tr><th>Fecha</th><th>Deporte</th><th>Venta fuerte</th><th class="num">Tickets</th><th class="num">Venta</th><th>Estado</th><th>Capturado por</th><th></th></tr></thead><tbody></tbody></table></div>
     </div>
   </div>
 
@@ -321,6 +321,11 @@ async function init() {
       note.textContent = 'Tu cuenta solo puede ver el día más reciente capturado. Si necesitas ver días anteriores, pídele a un administrador que active "Los operadores ven el historial completo" en Usuarios.';
       document.querySelector('main.wrap > .card').after(note);
     }
+    const moneyNote = document.createElement('div');
+    moneyNote.className = 'msg noprint';
+    moneyNote.style.marginTop = '12px';
+    moneyNote.textContent = 'Solo ves unidades y cantidades — los montos en dinero (venta, ticket promedio, utilidad) están ocultos, excepto en los días que un admin marque como "venta fuerte" en la tabla de días.';
+    document.querySelector('main.wrap > .card').after(moneyNote);
   }
 
   const today = new Date();
@@ -352,7 +357,7 @@ async function loadAll() {
 
   const { data: days, error: dErr } = await supabase
     .from('sale_days')
-    .select('id, date, sport, status, created_by, profiles(full_name)')
+    .select('id, date, sport, status, is_strong_sale, created_by, profiles(full_name)')
     .gte('date', RANGE.from).lte('date', RANGE.to)
     .order('date', { ascending: false });
   if (dErr) { gmsg('err', 'Error cargando días: ' + dErr.message); return; }
@@ -370,7 +375,7 @@ async function loadAll() {
     return;
   }
 
-  const { data: tickets } = await supabase.from('tickets').select('id, sale_day_id, ts, amount, payment_type').in('sale_day_id', dayIds);
+  const { data: tickets } = await supabase.from('tickets_view').select('id, sale_day_id, ts, amount, payment_type').in('sale_day_id', dayIds);
   ALL_TICKETS = tickets || [];
   const ticketIds = ALL_TICKETS.map(t => t.id);
 
@@ -788,22 +793,26 @@ function renderDaysTable() {
            <option value="otro" ${(!d.sport || d.sport === 'otro') ? 'selected' : ''}>Otro / normal</option>
          </select>`
       : (sportLabel[d.sport] || d.sport || '—');
-    return `<tr><td>${d.date}</td><td>${sportCell}</td><td class="num">${o.n}</td><td class="num">${money(o.v)}</td>
+    const strongCell = IS_ADMIN
+      ? `<input type="checkbox" class="edStrong" data-day="${d.id}" ${d.is_strong_sale ? 'checked' : ''}>`
+      : (d.is_strong_sale ? '<span class="chip reviewed">venta fuerte</span>' : '—');
+    return `<tr><td>${d.date}</td><td>${sportCell}</td><td>${strongCell}</td><td class="num">${o.n}</td><td class="num">${money(o.v)}</td>
       <td><span class="chip ${d.status}">${d.status}</span></td><td>${d.profiles ? d.profiles.full_name || '—' : '—'}</td>
       <td class="noprint">${IS_ADMIN ? `<button class="btn sec sm" type="button" onclick="window.__saveDaySport('${d.id}', this)">Guardar</button>` : ''}</td></tr>`;
-  }).join('') || '<tr><td colspan="7">Sin días en el periodo.</td></tr>';
+  }).join('') || '<tr><td colspan="8">Sin días en el periodo.</td></tr>';
 }
 
 window.__saveDaySport = async (dayId, btn) => {
   const tr = btn.closest('tr');
   const sport = tr.querySelector('.edSport').value;
+  const is_strong_sale = tr.querySelector('.edStrong').checked;
   btn.disabled = true;
-  const { error } = await supabase.from('sale_days').update({ sport }).eq('id', dayId);
+  const { error } = await supabase.from('sale_days').update({ sport, is_strong_sale }).eq('id', dayId);
   btn.disabled = false;
-  if (error) { gmsg('err', 'No pude guardar el deporte: ' + error.message); return; }
-  gmsg('ok', 'Deporte actualizado.');
+  if (error) { gmsg('err', 'No pude guardar: ' + error.message); return; }
+  gmsg('ok', 'Día actualizado.');
   const day = ALL_DAYS.find(d => d.id === dayId);
-  if (day) day.sport = sport;
+  if (day) { day.sport = sport; day.is_strong_sale = is_strong_sale; }
   applyFilters();
   renderComparativa();
 };
