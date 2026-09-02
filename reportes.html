@@ -185,6 +185,12 @@
       <div class="scroll"><table id="tblCompCategoria"><thead><tr><th>Categoría</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Venta prom./día</th><th class="num">Utilidad prom./día</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
     </div>
 
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por categoría y deporte</h3>
+    <p class="footnote">La misma categoría de arriba, pero desglosada por deporte — para ver, por ejemplo, si los eventos especiales de béisbol dejan más que los de fútbol.</p>
+    <div class="card" style="margin-top:10px">
+      <div class="scroll"><table id="tblCompCatDeporte"><thead><tr><th>Categoría</th><th>Deporte</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Venta prom./día</th><th class="num">Utilidad prom./día</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
+    </div>
+
     <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por evento</h3>
     <p class="footnote">Cada evento especial o día de partido, uno por fila (los eventos de varios días se agrupan si les pones el mismo nombre en "Evento" en la tabla de días). Usa el filtro "Evento específico" de arriba para ver el detalle de productos de uno solo.</p>
     <div class="card" style="margin-top:10px">
@@ -968,6 +974,23 @@ function renderComparativa() {
       <td class="num">${s.utilidad != null && s.dias ? moneyD(s.utilidad / s.dias) : '—'}</td>
       <td class="num">${s.ticketProm != null ? moneyD(s.ticketProm) : '—'}</td></tr>`;
   }).join('');
+
+  const sportsForCross = { futbol: 'Fútbol', beisbol: 'Béisbol / Softbol', otro: 'Otro / normal' };
+  const catDeporteRows = [];
+  for (const [catKey, catLabel] of Object.entries(categorias)) {
+    for (const [spKey, spLabel] of Object.entries(sportsForCross)) {
+      const ids = ALL_DAYS.filter(d => (d.day_type || 'entrenamiento_normal') === catKey && (d.sport || 'otro') === spKey).map(d => d.id);
+      if (!ids.length) continue;
+      catDeporteRows.push({ catLabel, spLabel, ids });
+    }
+  }
+  document.querySelector('#tblCompCatDeporte tbody').innerHTML = catDeporteRows.map(r => {
+    const s = statsForDays(r.ids);
+    return `<tr><td>${r.catLabel}</td><td>${r.spLabel}</td><td class="num">${s.dias}</td><td class="num">${money(s.venta)}</td>
+      <td class="num">${s.dias ? money(s.venta / s.dias) : '—'}</td>
+      <td class="num">${s.utilidad != null && s.dias ? moneyD(s.utilidad / s.dias) : '—'}</td>
+      <td class="num">${s.ticketProm != null ? moneyD(s.ticketProm) : '—'}</td></tr>`;
+  }).join('') || '<tr><td colspan="7">Sin datos en el periodo.</td></tr>';
 
   const sportLabelComp = { futbol: 'Fútbol', beisbol: 'Béisbol / Softbol', otro: 'Otro' };
   const byEvent = new Map(); // key -> {label, ids, sports:Set, types:Set}
