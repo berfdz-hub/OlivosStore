@@ -66,6 +66,9 @@
         <select id="fCategoria"><option value="todos">Todas</option><option value="evento_especial">Evento especial</option><option value="dia_partido">Día de partido</option><option value="entrenamiento_normal">Entrenamiento normal</option></select>
       </div>
     </div>
+    <div class="field" style="margin-top:12px;margin-bottom:0;max-width:320px"><label>Evento específico</label>
+      <select id="fEvento"><option value="todos">Todos</option></select>
+    </div>
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <span class="footnote" style="margin-right:2px">Atajos:</span>
       <button type="button" class="btn sec sm" data-preset="todos,todos,todos,todos">Todos</button>
@@ -93,7 +96,7 @@
     </div>
     <div class="card" style="margin-top:16px">
       <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:12px">Días en el periodo</h3>
-      <div class="scroll"><table id="tblDaysAdmin"><thead><tr><th>Fecha</th><th>Deporte</th><th>Categoría</th><th class="num">Tickets</th><th class="num">Venta</th><th>Estado</th><th>Capturado por</th><th></th></tr></thead><tbody></tbody></table></div>
+      <div class="scroll"><table id="tblDaysAdmin"><thead><tr><th>Fecha</th><th>Deporte</th><th>Categoría</th><th>Evento</th><th class="num">Tickets</th><th class="num">Venta</th><th>Estado</th><th>Capturado por</th><th></th></tr></thead><tbody></tbody></table></div>
     </div>
   </div>
 
@@ -180,6 +183,12 @@
     <p class="footnote">Evento especial (torneos), día de partido normal, o entrenamiento entre semana — se marca por día en la tabla de "Días en el periodo" del Resumen.</p>
     <div class="card" style="margin-top:10px">
       <div class="scroll"><table id="tblCompCategoria"><thead><tr><th>Categoría</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Venta prom./día</th><th class="num">Utilidad prom./día</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por evento</h3>
+    <p class="footnote">Cada evento especial o día de partido, uno por fila (los eventos de varios días se agrupan si les pones el mismo nombre en "Evento" en la tabla de días). Usa el filtro "Evento específico" de arriba para ver el detalle de productos de uno solo.</p>
+    <div class="card" style="margin-top:10px">
+      <div class="scroll"><table id="tblCompEvento"><thead><tr><th>Evento</th><th>Deporte</th><th>Categoría</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Utilidad</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
     </div>
 
     <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por mes</h3>
@@ -374,7 +383,7 @@ async function init() {
 
   document.getElementById('btnFilter').addEventListener('click', loadAll);
   if (IS_ADMIN) document.getElementById('formNewProduct').addEventListener('submit', addProduct);
-  ['fTipoDia', 'fTipoPartido', 'fDeporte', 'fCategoria'].forEach(id =>
+  ['fTipoDia', 'fTipoPartido', 'fDeporte', 'fCategoria', 'fEvento'].forEach(id =>
     document.getElementById(id).addEventListener('change', applyFilters));
   document.querySelectorAll('[data-preset]').forEach(btn => btn.addEventListener('click', () => {
     const [dia, partido, deporte, categoria] = btn.dataset.preset.split(',');
@@ -382,6 +391,7 @@ async function init() {
     document.getElementById('fTipoPartido').value = partido;
     document.getElementById('fDeporte').value = deporte;
     document.getElementById('fCategoria').value = categoria;
+    document.getElementById('fEvento').value = 'todos';
     applyFilters();
   }));
   document.getElementById('coberturaDias').addEventListener('input', renderCompras);
@@ -417,7 +427,7 @@ async function loadAll() {
 
   const { data: days, error: dErr } = await supabase
     .from('sale_days')
-    .select('id, date, sport, status, day_type, created_by, profiles(full_name)')
+    .select('id, date, sport, status, day_type, event_name, created_by, profiles(full_name)')
     .gte('date', RANGE.from).lte('date', RANGE.to)
     .order('date', { ascending: false });
   if (dErr) { gmsg('err', 'Error cargando días: ' + dErr.message); return; }
@@ -454,6 +464,7 @@ async function loadAll() {
   const { data: invc } = await supabase.from('inventory_counts').select('id, sale_day_id, product_id, opening_stock, sold, physical_count, note').in('sale_day_id', dayIds);
   ALL_INV = invc || [];
 
+  refreshEventoOptions();
   applyFilters();
   renderComparativa();
 }
@@ -464,11 +475,28 @@ function isWeekend(dateStr) {
   return dow === 0 || dow === 6;
 }
 
+// clave para agrupar un dia como "evento": su nombre si tiene, si no su fecha sola
+function eventKeyOf(d) { return d.event_name || ('__dia__' + d.date); }
+function eventLabelOf(d) { return d.event_name || d.date; }
+
+function refreshEventoOptions() {
+  const sel = document.getElementById('fEvento');
+  const current = sel.value;
+  const relevant = ALL_DAYS.filter(d => d.day_type === 'evento_especial' || d.day_type === 'dia_partido');
+  const seen = new Map(); // key -> label
+  relevant.forEach(d => { if (!seen.has(eventKeyOf(d))) seen.set(eventKeyOf(d), eventLabelOf(d)); });
+  const entries = [...seen.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  sel.innerHTML = '<option value="todos">Todos</option>' +
+    entries.map(([key, label]) => `<option value="${key.replace(/"/g, '&quot;')}">${label}</option>`).join('');
+  if ([...sel.options].some(o => o.value === current)) sel.value = current;
+}
+
 function applyFilters() {
   const tipoDia = document.getElementById('fTipoDia').value;
   const tipoPartido = document.getElementById('fTipoPartido').value;
   const deporte = document.getElementById('fDeporte').value;
   const categoria = document.getElementById('fCategoria').value;
+  const evento = document.getElementById('fEvento').value;
 
   const gamesByDay = new Map();
   ALL_GAMES.forEach(g => {
@@ -484,6 +512,7 @@ function applyFilters() {
     if (tipoPartido === 'sin' && hasGames) return false;
     if (deporte !== 'todos' && d.sport !== deporte) return false;
     if (categoria !== 'todos' && d.day_type !== categoria) return false;
+    if (evento !== 'todos' && eventKeyOf(d) !== evento) return false;
     return true;
   });
 
@@ -862,23 +891,28 @@ function renderDaysTable() {
            <option value="entrenamiento_normal" ${(!d.day_type || d.day_type === 'entrenamiento_normal') ? 'selected' : ''}>Entrenamiento normal</option>
          </select>`
       : `<span class="chip ${d.day_type === 'evento_especial' ? 'reviewed' : (d.day_type === 'dia_partido' ? 'submitted' : 'draft')}">${categoryLabel[d.day_type] || 'Entrenamiento normal'}</span>`;
-    return `<tr><td>${d.date}</td><td>${sportCell}</td><td>${categoryCell}</td><td class="num">${o.n}</td><td class="num">${money(o.v)}</td>
+    const eventCell = IS_ADMIN
+      ? `<input type="text" class="edEvento" data-day="${d.id}" value="${(d.event_name || '').replace(/"/g, '&quot;')}" placeholder="ej. Torneo Softball Abril" style="min-width:170px">`
+      : (d.event_name || '—');
+    return `<tr><td>${d.date}</td><td>${sportCell}</td><td>${categoryCell}</td><td>${eventCell}</td><td class="num">${o.n}</td><td class="num">${money(o.v)}</td>
       <td><span class="chip ${d.status}">${d.status}</span></td><td>${d.profiles ? d.profiles.full_name || '—' : '—'}</td>
       <td class="noprint">${IS_ADMIN ? `<button class="btn sec sm" type="button" onclick="window.__saveDaySport('${d.id}', this)">Guardar</button>` : ''}</td></tr>`;
-  }).join('') || '<tr><td colspan="8">Sin días en el periodo.</td></tr>';
+  }).join('') || '<tr><td colspan="9">Sin días en el periodo.</td></tr>';
 }
 
 window.__saveDaySport = async (dayId, btn) => {
   const tr = btn.closest('tr');
   const sport = tr.querySelector('.edSport').value;
   const day_type = tr.querySelector('.edCategoria').value;
+  const event_name = tr.querySelector('.edEvento').value.trim() || null;
   btn.disabled = true;
-  const { error } = await supabase.from('sale_days').update({ sport, day_type }).eq('id', dayId);
+  const { error } = await supabase.from('sale_days').update({ sport, day_type, event_name }).eq('id', dayId);
   btn.disabled = false;
   if (error) { gmsg('err', 'No pude guardar: ' + error.message); return; }
   gmsg('ok', 'Día actualizado.');
   const day = ALL_DAYS.find(d => d.id === dayId);
-  if (day) { day.sport = sport; day.day_type = day_type; }
+  if (day) { day.sport = sport; day.day_type = day_type; day.event_name = event_name; }
+  refreshEventoOptions();
   applyFilters();
   renderComparativa();
 };
@@ -934,6 +968,29 @@ function renderComparativa() {
       <td class="num">${s.utilidad != null && s.dias ? moneyD(s.utilidad / s.dias) : '—'}</td>
       <td class="num">${s.ticketProm != null ? moneyD(s.ticketProm) : '—'}</td></tr>`;
   }).join('');
+
+  const sportLabelComp = { futbol: 'Fútbol', beisbol: 'Béisbol / Softbol', otro: 'Otro' };
+  const byEvent = new Map(); // key -> {label, ids, sports:Set, types:Set}
+  ALL_DAYS.filter(d => d.day_type === 'evento_especial' || d.day_type === 'dia_partido').forEach(d => {
+    const key = eventKeyOf(d);
+    if (!byEvent.has(key)) byEvent.set(key, { label: eventLabelOf(d), ids: [], sports: new Set(), types: new Set() });
+    const e = byEvent.get(key);
+    e.ids.push(d.id); e.sports.add(d.sport || 'otro'); e.types.add(d.day_type);
+  });
+  const eventRows = [...byEvent.values()].sort((a, b) => {
+    const da = Math.max(...a.ids.map(id => ALL_DAYS.find(d => d.id === id).date));
+    const db = Math.max(...b.ids.map(id => ALL_DAYS.find(d => d.id === id).date));
+    return db > da ? 1 : db < da ? -1 : 0;
+  });
+  const catLabelShort = { evento_especial: 'Evento especial', dia_partido: 'Día de partido' };
+  document.querySelector('#tblCompEvento tbody').innerHTML = eventRows.map(e => {
+    const s = statsForDays(e.ids);
+    return `<tr><td>${e.label}</td><td>${[...e.sports].map(sp => sportLabelComp[sp] || sp).join(', ')}</td>
+      <td>${[...e.types].map(t => catLabelShort[t]).join(', ')}</td>
+      <td class="num">${s.dias}</td><td class="num">${money(s.venta)}</td>
+      <td class="num">${s.utilidad != null ? moneyD(s.utilidad) : '—'}</td>
+      <td class="num">${s.ticketProm != null ? moneyD(s.ticketProm) : '—'}</td></tr>`;
+  }).join('') || '<tr><td colspan="7">Sin eventos o días de partido en el periodo.</td></tr>';
 
   const byMonth = new Map();
   ALL_DAYS.forEach(d => { const k = d.date.slice(0, 7); if (!byMonth.has(k)) byMonth.set(k, []); byMonth.get(k).push(d.id); });
