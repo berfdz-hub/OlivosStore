@@ -350,6 +350,23 @@ async function init() {
   if (IS_ADMIN) { await loadCatalogFull(); await loadUsers(); }
 }
 
+// Supabase/PostgREST corta cada consulta a 1000 filas por default.
+// Esto pagina con .range() hasta traer todo, sin importar cuantas filas haya.
+async function selectAllIn(table, columns, inColumn, inValues, pageSize = 1000) {
+  const out = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase.from(table).select(columns)
+      .in(inColumn, inValues).range(from, from + pageSize - 1);
+    if (error) { gmsg('err', `Error cargando ${table}: ` + error.message); break; }
+    if (!data || !data.length) break;
+    out.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return out;
+}
+
 async function loadAll() {
   RANGE.from = document.getElementById('fFrom').value;
   RANGE.to = document.getElementById('fTo').value;
@@ -375,8 +392,7 @@ async function loadAll() {
     return;
   }
 
-  const { data: tickets } = await supabase.from('tickets_view').select('id, sale_day_id, ts, amount, payment_type').in('sale_day_id', dayIds);
-  ALL_TICKETS = tickets || [];
+  ALL_TICKETS = await selectAllIn('tickets_view', 'id, sale_day_id, ts, amount, payment_type', 'sale_day_id', dayIds);
   const ticketIds = ALL_TICKETS.map(t => t.id);
 
   ALL_ITEMS = [];
@@ -384,8 +400,8 @@ async function loadAll() {
     const chunkSize = 500;
     for (let i = 0; i < ticketIds.length; i += chunkSize) {
       const chunk = ticketIds.slice(i, i + chunkSize);
-      const { data } = await supabase.from('ticket_items').select('id, ticket_id, product_id, product_name_raw, qty').in('ticket_id', chunk);
-      if (data) ALL_ITEMS.push(...data);
+      const data = await selectAllIn('ticket_items', 'id, ticket_id, product_id, product_name_raw, qty', 'ticket_id', chunk);
+      ALL_ITEMS.push(...data);
     }
   }
 
