@@ -211,6 +211,14 @@
       <div class="scroll"><table id="tblCompEvento"><thead><tr><th>Evento</th><th>Deporte</th><th>Categoría</th><th class="num">Días</th><th class="num">Venta total</th><th class="num">Venta prom./día</th><th class="num">Utilidad</th><th class="num">Ticket promedio</th></tr></thead><tbody></tbody></table></div>
     </div>
 
+    <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Modo comparativo: compara eventos entre sí</h3>
+    <p class="footnote">Marca 2 o más eventos especiales o días de partido (ej. un torneo de béisbol contra uno de fútbol) para verlos lado a lado — venta, utilidad, y qué producto se necesita más en cada uno.</p>
+    <div class="card" style="margin-top:10px">
+      <div id="eventCheckList" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px"></div>
+      <button type="button" class="btn sec sm" id="btnCompareEvents">Comparar seleccionados</button>
+    </div>
+    <div id="eventCompareOut" style="margin-top:14px"></div>
+
     <div class="admin-only">
     <h3 style="font-size:15px;font-family:'Source Sans 3';font-weight:700;margin:20px 0 10px">Por mes</h3>
     <p class="footnote">Solo administración — cruza el límite de un mes que puede ver un operador.</p>
@@ -364,6 +372,9 @@ let PRODUCTS = [];
 let ALL_DAYS = [], ALL_TICKETS = [], ALL_ITEMS = [], ALL_GAMES = [], ALL_INV = [];
 // vista actual después de aplicar los filtros de segmento (lo que usan los render*)
 let DAYS = [], TICKETS = [], ITEMS = [], GAMES = [], INV_COUNTS = [];
+// modo comparativo de eventos (pestaña Comparativa)
+let EVENTS_MAP = new Map();
+let SELECTED_EVENTS = new Set();
 
 document.getElementById('tabbar').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-tab]');
@@ -404,6 +415,7 @@ async function init() {
   document.getElementById('fFrom').value = from.toISOString().slice(0, 10);
 
   document.getElementById('btnFilter').addEventListener('click', loadAll);
+  document.getElementById('btnCompareEvents').addEventListener('click', compareSelectedEvents);
   if (IS_ADMIN) document.getElementById('formNewProduct').addEventListener('submit', addProduct);
   ['fTipoDia', 'fTipoPartido', 'fDeporte', 'fCategoria', 'fEvento'].forEach(id =>
     document.getElementById(id).addEventListener('change', applyFilters));
@@ -1066,6 +1078,10 @@ function renderComparativa() {
       <td class="num">${s.ticketProm != null ? moneyD(s.ticketProm) : '—'}</td></tr>`;
   }).join('') || '<tr><td colspan="8">Sin eventos o días de partido en el periodo.</td></tr>';
 
+  EVENTS_MAP = byEvent;
+  for (const key of [...SELECTED_EVENTS]) { if (!EVENTS_MAP.has(key)) SELECTED_EVENTS.delete(key); }
+  renderEventCheckList();
+
   const byMonth = new Map();
   ALL_DAYS.forEach(d => { const k = d.date.slice(0, 7); if (!byMonth.has(k)) byMonth.set(k, []); byMonth.get(k).push(d.id); });
   const mesesRows = [...byMonth.entries()].sort((a, b) => b[0].localeCompare(a[0]));
@@ -1085,6 +1101,111 @@ function renderComparativa() {
       <td class="num">${s.utilidad != null ? moneyD(s.utilidad) : '—'}</td>
       <td class="num">${s.ticketProm != null ? moneyD(s.ticketProm) : '—'}</td></tr>`;
   }).join('') || '<tr><td colspan="5">Sin días en el periodo.</td></tr>';
+}
+
+// ---------------- modo comparativo de eventos ----------------
+function productUnitsForDays(dayIds) {
+  const set = new Set(dayIds);
+  const tks = ALL_TICKETS.filter(t => set.has(t.sale_day_id));
+  const tkIdSet = new Set(tks.map(t => t.id));
+  const items = ALL_ITEMS.filter(it => tkIdSet.has(it.ticket_id));
+  const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
+  const agg = new Map();
+  items.forEach(it => {
+    const name = it.product_id ? (prodById.get(it.product_id)?.name || '?') : (it.product_name_raw + ' (sin catálogo)');
+    agg.set(name, (agg.get(name) || 0) + it.qty);
+  });
+  return agg;
+}
+
+function renderEventCheckList() {
+  const wrap = document.getElementById('eventCheckList');
+  if (!wrap) return;
+  const sportLabel = { futbol: 'Fútbol', beisbol: 'Béisbol/Softbol', otro: 'Otro' };
+  const rows = [...EVENTS_MAP.entries()].sort((a, b) => {
+    const da = Math.max(...a[1].ids.map(id => ALL_DAYS.find(d => d.id === id).date));
+    const db = Math.max(...b[1].ids.map(id => ALL_DAYS.find(d => d.id === id).date));
+    return db > da ? 1 : db < da ? -1 : 0;
+  });
+  wrap.innerHTML = rows.map(([key, e]) => {
+    const fechas = e.ids.map(id => ALL_DAYS.find(d => d.id === id).date).sort();
+    const rango = fechas.length > 1 ? `${fechas[0]} a ${fechas[fechas.length - 1]}` : fechas[0];
+    const checked = SELECTED_EVENTS.has(key) ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:6px;font-weight:400;border:1px solid var(--line);border-radius:7px;padding:6px 10px;margin:0;cursor:pointer">
+      <input type="checkbox" value="${key}" ${checked} class="evtCheck">
+      <span>${e.label} <span class="footnote" style="display:inline">(${[...e.sports].map(sp => sportLabel[sp] || sp).join('/')}, ${e.ids.length}d, ${rango})</span></span>
+    </label>`;
+  }).join('') || '<p class="footnote">No hay eventos especiales ni días de partido en el periodo filtrado.</p>';
+  wrap.querySelectorAll('.evtCheck').forEach(cb => cb.addEventListener('change', () => {
+    if (cb.checked) SELECTED_EVENTS.add(cb.value); else SELECTED_EVENTS.delete(cb.value);
+  }));
+}
+
+function compareSelectedEvents() {
+  const out = document.getElementById('eventCompareOut');
+  if (!out) return;
+  const keys = [...SELECTED_EVENTS].filter(k => EVENTS_MAP.has(k));
+  if (keys.length < 2) {
+    out.innerHTML = '<div class="msg warn">Marca al menos 2 eventos arriba para compararlos.</div>';
+    return;
+  }
+
+  const entries = keys.map(key => {
+    const e = EVENTS_MAP.get(key);
+    const s = statsForDays(e.ids);
+    const prods = productUnitsForDays(e.ids);
+    const uds = [...prods.values()].reduce((a, b) => a + b, 0);
+    return { key, label: e.label, s, prods, uds };
+  });
+
+  let html = '<div class="card"><h4 style="font-size:15px;font-family:\'Source Sans 3\';font-weight:700;margin-bottom:10px">Comparativo</h4><div class="scroll"><table><thead><tr><th>Métrica</th>' +
+    entries.map(e => `<th>${e.label}</th>`).join('') + '</tr></thead><tbody>';
+  const metricRows = [
+    ['Días', e => e.s.dias],
+    ['Venta total', e => money(e.s.venta)],
+    ['Venta prom./día', e => e.s.dias ? money(e.s.venta / e.s.dias) : '—'],
+    ['Utilidad', e => e.s.utilidad != null ? moneyD(e.s.utilidad) : '—'],
+    ['Ticket promedio', e => e.s.ticketProm != null ? moneyD(e.s.ticketProm) : '—'],
+    ['Unidades totales', e => e.uds],
+  ];
+  metricRows.forEach(([label, fn]) => {
+    html += `<tr><td>${label}</td>` + entries.map(e => `<td class="num">${fn(e)}</td>`).join('') + `</tr>`;
+  });
+  html += '</tbody></table></div></div>';
+
+  const topSet = new Set();
+  entries.forEach(e => {
+    [...e.prods.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).forEach(([name]) => topSet.add(name));
+  });
+  const prodNames = [...topSet].sort((a, b) => {
+    const totalA = entries.reduce((s, e) => s + (e.prods.get(a) || 0), 0);
+    const totalB = entries.reduce((s, e) => s + (e.prods.get(b) || 0), 0);
+    return totalB - totalA;
+  });
+  html += '<div class="card" style="margin-top:14px"><h4 style="font-size:15px;font-family:\'Source Sans 3\';font-weight:700;margin-bottom:10px">Unidades vendidas por producto</h4>';
+  html += '<div class="scroll"><table><thead><tr><th>Producto</th>' + entries.map(e => `<th class="num">${e.label}</th>`).join('') + '</tr></thead><tbody>';
+  prodNames.forEach(name => {
+    const vals = entries.map(e => e.prods.get(name) || 0);
+    const max = Math.max(...vals);
+    html += `<tr><td>${name}</td>` + vals.map(v => `<td class="num${v === max && max > 0 ? ' pos' : ''}">${v || '—'}</td>`).join('') + `</tr>`;
+  });
+  html += '</tbody></table></div></div>';
+
+  const byVenta = [...entries].sort((a, b) => b.s.venta - a.s.venta);
+  const byVentaDia = [...entries].sort((a, b) => (b.s.dias ? b.s.venta / b.s.dias : 0) - (a.s.dias ? a.s.venta / a.s.dias : 0));
+  const insights = [];
+  insights.push(`<b>${byVenta[0].label}</b> tuvo la mayor venta total (${money(byVenta[0].s.venta)})${byVenta.length > 1 ? `, ${money(Math.max(0, byVenta[0].s.venta - byVenta[byVenta.length - 1].s.venta))} más que <b>${byVenta[byVenta.length - 1].label}</b>` : ''}.`);
+  if (byVentaDia[0].key !== byVenta[0].key) {
+    insights.push(`Por día, <b>${byVentaDia[0].label}</b> fue el que más vendió en promedio (${byVentaDia[0].s.dias ? money(byVentaDia[0].s.venta / byVentaDia[0].s.dias) : '—'}/día).`);
+  }
+  entries.forEach(e => {
+    const top = [...e.prods.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (top) insights.push(`En <b>${e.label}</b> lo que más se vendió fue <b>${top[0]}</b> (${top[1]} unidades) — ten eso bien surtido para el próximo evento parecido.`);
+  });
+  html += '<div class="card" style="margin-top:14px"><h4 style="font-size:15px;font-family:\'Source Sans 3\';font-weight:700;margin-bottom:10px">Qué te dice esto</h4><ul style="margin:0;padding-left:18px;line-height:1.7;font-size:13.5px">' +
+    insights.map(i => `<li>${i}</li>`).join('') + '</ul></div>';
+
+  out.innerHTML = html;
 }
 
 // ---------------- lista de compras ----------------
