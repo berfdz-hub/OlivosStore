@@ -28,8 +28,15 @@
   </div>
 </div>
 
+<div class="dashboard-modes noprint" id="dashboardModes" role="tablist" aria-label="Vistas principales">
+  <div class="wrap">
+    <button class="dashboard-mode on" role="tab" aria-selected="true" data-view="resumen" data-help="Para juntas y decisiones: ventas, utilidad, tendencias y resultados del periodo.">Vista ejecutiva</button>
+    <button class="dashboard-mode" role="tab" aria-selected="false" data-view="operacion" data-help="Para el trabajo diario: detalle por fecha, pendientes, inventario y compras próximas.">Vista operativa</button>
+    <button class="dashboard-mode" role="tab" aria-selected="false" data-view="guiada" data-help="Para decidir qué hacer: hallazgos, alertas y predictor de compra para próximos eventos.">Vista guiada</button>
+  </div>
+</div>
+
 <div class="tabbar noprint" id="tabbar">
-  <button class="on" data-tab="resumen">Resumen</button>
   <button data-tab="calendario">Calendario</button>
   <button data-tab="productos">Productos</button>
   <button data-tab="calor">Mapa de calor</button>
@@ -97,7 +104,8 @@
   <div id="globalMsg"></div>
 
   <div class="pane on" id="pane-resumen">
-    <h2 class="section-title" style="margin-top:20px">Resumen del periodo</h2>
+    <h2 class="section-title" style="margin-top:20px">Vista ejecutiva</h2>
+    <p class="footnote" style="margin-top:6px">Resultados del periodo para juntas, decisiones de precio, rentabilidad y desempeño general.</p>
     <div class="kpis" id="kpis" style="margin-top:14px"></div>
     <div id="sinCostoNote"></div>
     <div class="card" style="margin-top:16px">
@@ -107,6 +115,67 @@
     <div class="card" style="margin-top:16px">
       <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:12px">Días en el periodo</h3>
       <div class="scroll"><table id="tblDaysAdmin"><thead><tr><th>Fecha</th><th>Deporte</th><th>Categoría</th><th>Evento</th><th>Etiquetas</th><th class="num">Tickets</th><th class="num">Venta</th><th>Estado</th><th>Capturado por</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-operacion">
+    <h2 class="section-title" style="margin-top:20px">Vista operativa</h2>
+    <p class="footnote" style="margin-top:6px">Lo necesario para operar la tienda hoy: volumen, productos, días recientes, pendientes y compra inmediata.</p>
+    <div class="kpis" id="opsKpis" style="margin-top:14px"></div>
+    <div class="grid grid2" style="margin-top:16px;align-items:start">
+      <div class="card">
+        <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:12px">Actividad reciente</h3>
+        <div class="scroll"><table id="tblOpsDays"><thead><tr><th>Fecha</th><th>Tipo</th><th class="num">Tickets</th><th class="num">Unidades</th><th class="num">Venta</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:12px">Pendientes y acciones</h3>
+        <div id="opsActions"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+        <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700">Compra sugerida para 7 días</h3>
+        <button type="button" class="btn sec sm" onclick="document.querySelector('[data-tab=compras]').click()">Abrir lista completa</button>
+      </div>
+      <div class="scroll"><table id="tblOpsCompras"><thead><tr><th>Producto</th><th class="num">Existencia</th><th class="num">Consumo/día</th><th class="num">Comprar</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-guiada">
+    <h2 class="section-title" style="margin-top:20px">Vista guiada</h2>
+    <p class="footnote" style="margin-top:6px">Conclusiones, alertas y recomendaciones traducidas a acciones concretas.</p>
+    <div class="guided-hero" id="guidedHero"></div>
+    <div class="grid grid3" id="guidedKpis" style="margin-top:14px"></div>
+    <div class="grid grid2" style="margin-top:16px;align-items:start">
+      <div class="card">
+        <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:10px">Qué necesita atención</h3>
+        <div id="guidedActions"></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:10px">Comparación rápida por deporte</h3>
+        <div id="guidedSportCompare"></div>
+      </div>
+    </div>
+
+    <div class="card predictor-card" style="margin-top:16px">
+      <div class="predictor-head">
+        <div>
+          <div class="eyebrow">Preparar próximo evento</div>
+          <h3>Predictor de compra</h3>
+          <p class="footnote">Estima lo que se venderá usando eventos históricos comparables y descuenta el inventario conocido. No inventa existencias: cuando falta un conteo, lo marca para revisión.</p>
+        </div>
+        <span class="predictor-badge">Basado en tus datos</span>
+      </div>
+      <div class="grid grid4 noprint" style="margin-top:14px;align-items:end">
+        <div class="field" style="margin-bottom:0"><label>Fecha del evento</label><input type="date" id="predDate"></div>
+        <div class="field" style="margin-bottom:0"><label>Tipo de evento</label><select id="predType"><option value="club_puebla" selected>Club Puebla</option><option value="futbol">Fútbol</option><option value="beisbol">Béisbol / Softbol</option><option value="otro">Otro evento especial</option></select></div>
+        <div class="field" style="margin-bottom:0"><label>Número de partidos</label><input type="number" id="predGames" value="1" min="1"></div>
+        <div class="field" style="margin-bottom:0"><label>Colchón de seguridad</label><select id="predSafety"><option value="0">Sin colchón</option><option value="0.10" selected>10%</option><option value="0.15">15%</option><option value="0.20">20%</option></select></div>
+        <div style="grid-column:1/-1"><button type="button" class="btn" id="btnPredict">Calcular pedido recomendado</button></div>
+      </div>
+      <div id="predictorSummary"></div>
+      <div class="scroll" style="margin-top:12px"><table id="tblPrediction"><thead><tr><th>Producto</th><th class="num">Promedio histórico</th><th class="num">Demanda estimada</th><th class="num">Inventario estimado</th><th class="num">Comprar</th><th>Base del cálculo</th></tr></thead><tbody></tbody></table></div>
+      <p class="footnote">Inventario estimado = último conteo físico conocido menos ventas posteriores registradas. Si hubo compras o entradas de mercancía que no se capturaron, confirma el conteo antes de pedir.</p>
     </div>
   </div>
 
@@ -121,6 +190,9 @@
         <div class="field" style="margin-bottom:0"><label>Hora</label><input type="time" id="sgTime" required></div>
         <div class="field" style="margin-bottom:0"><label>Deporte</label>
           <select id="sgSport"><option value="futbol">Fútbol</option><option value="beisbol">Béisbol / Softbol</option><option value="otro">Otro</option></select>
+        </div>
+        <div class="field" style="margin-bottom:0"><label>Tipo de evento</label>
+          <select id="sgEventType"><option value="normal">Partido normal</option><option value="club_puebla">Club Puebla</option><option value="especial">Otro evento especial</option></select>
         </div>
         <div class="field" style="margin-bottom:0"><label>Nota (opcional)</label><input type="text" id="sgNotes" placeholder="ej. vs. equipo tal"></div>
         <div style="grid-column:1/-1"><button class="btn sm" type="submit">Agendar</button></div>
@@ -384,6 +456,8 @@ let DAYS = [], TICKETS = [], ITEMS = [], GAMES = [], INV_COUNTS = [];
 // modo comparativo de eventos (pestaña Comparativa)
 let EVENTS_MAP = new Map();
 let SELECTED_EVENTS = new Set();
+let PRED_DAYS = [], PRED_TICKETS = [], PRED_ITEMS = [], PRED_GAMES = [], PRED_INV = [];
+let SCHEDULED_GAMES = [];
 const EVENT_TAG_LABELS = { futbol: 'Fútbol', beisbol: 'Béisbol / Softbol', club_puebla: 'Club Puebla', otro: 'Otro' };
 
 function checkedEventTags(root = document) {
@@ -401,11 +475,26 @@ function eventTagLabels(values = []) {
   return (values || []).map(value => EVENT_TAG_LABELS[value] || value);
 }
 
+function showPane(name, source = 'detail') {
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + name));
+  document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('on', source === 'detail' && b.dataset.tab === name));
+  document.querySelectorAll('#dashboardModes button').forEach(b => {
+    const selected = source === 'mode' && b.dataset.view === name;
+    b.classList.toggle('on', selected);
+    b.setAttribute('aria-selected', String(selected));
+  });
+}
+
 document.getElementById('tabbar').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-tab]');
   if (!btn) return;
-  document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('on', b === btn));
-  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + btn.dataset.tab));
+  showPane(btn.dataset.tab, 'detail');
+});
+
+document.getElementById('dashboardModes').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-view]');
+  if (!btn) return;
+  showPane(btn.dataset.view, 'mode');
 });
 
 let IS_ADMIN = false;
@@ -458,10 +547,15 @@ async function init() {
   document.getElementById('coberturaDias').addEventListener('input', renderCompras);
   document.getElementById('formSchedGame').addEventListener('submit', addScheduledGame);
   document.getElementById('sgDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('btnPredict').addEventListener('click', renderPrediction);
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('predDate').value = tomorrow.toISOString().slice(0, 10);
 
   await loadAll();
   if (IS_ADMIN) { await loadCatalogFull(); await loadUsers(); }
   await loadScheduledGames();
+  await loadPredictionData();
+  renderPrediction();
 }
 
 // Supabase/PostgREST corta cada consulta a 1000 filas por default.
@@ -603,6 +697,8 @@ function applyFilters() {
 
 function renderAll() {
   renderResumen();
+  renderOperationalView();
+  renderGuidedView();
   renderProductos();
   renderCalor();
   renderCombos();
@@ -611,6 +707,110 @@ function renderAll() {
   renderDaysTable();
   renderCompras();
   renderDiaPorDia();
+}
+
+function productUnits(items = ITEMS) {
+  const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
+  const agg = new Map();
+  items.forEach(it => {
+    if (!it.product_id) return;
+    const current = agg.get(it.product_id) || { id: it.product_id, name: prodById.get(it.product_id)?.name || it.product_name_raw, qty: 0 };
+    current.qty += Number(it.qty) || 0;
+    agg.set(it.product_id, current);
+  });
+  return [...agg.values()].sort((a, b) => b.qty - a.qty);
+}
+
+function purchaseRowsFor(days, items, invCounts, coverage = 7) {
+  const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
+  const consumo = new Map();
+  items.forEach(it => { if (it.product_id) consumo.set(it.product_id, (consumo.get(it.product_id) || 0) + Number(it.qty || 0)); });
+  const nDias = days.length || 1;
+  const dayById = new Map(days.map(d => [d.id, d]));
+  const latest = new Map();
+  invCounts.forEach(c => {
+    if (!c.product_id) return;
+    const day = dayById.get(c.sale_day_id);
+    if (!day) return;
+    const value = c.physical_count != null ? Number(c.physical_count)
+      : (c.opening_stock != null && c.sold != null ? Number(c.opening_stock) - Number(c.sold) : null);
+    if (value == null) return;
+    const previous = latest.get(c.product_id);
+    if (!previous || day.date > previous.date) latest.set(c.product_id, { date: day.date, value });
+  });
+  return [...consumo.keys()].map(pid => {
+    const p = prodById.get(pid);
+    const unitsPerDay = consumo.get(pid) / nDias;
+    const stock = latest.has(pid) ? latest.get(pid).value : null;
+    const currentCoverage = stock != null && unitsPerDay > 0 ? stock / unitsPerDay : null;
+    const suggested = stock != null ? Math.max(0, Math.ceil(unitsPerDay * coverage - stock)) : null;
+    return { id: pid, name: p?.name || '?', unitsPerDay, stock, currentCoverage, suggested };
+  }).sort((a, b) => (a.currentCoverage ?? 999) - (b.currentCoverage ?? 999));
+}
+
+function renderOperationalView() {
+  const sales = TICKETS.reduce((sum, ticket) => sum + Number(ticket.amount || 0), 0);
+  const units = ITEMS.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+  const top = productUnits()[0];
+  const purchaseRows = purchaseRowsFor(DAYS, ITEMS, INV_COUNTS, 7);
+  const toBuy = purchaseRows.filter(row => Number(row.suggested) > 0);
+  document.getElementById('opsKpis').innerHTML = [
+    ['Venta del periodo', money(sales)], ['Tickets', TICKETS.length],
+    ['Unidades / venta', TICKETS.length ? (units / TICKETS.length).toFixed(2) : '—'],
+    ['Producto líder', top ? `${top.name} · ${top.qty}` : '—'],
+    ['Productos por pedir', toBuy.length]
+  ].map(([label, value]) => `<div class="kpi"><b>${value}</b><span>${label}</span></div>`).join('');
+
+  const typeLabel = { evento_especial: 'Evento especial', dia_partido: 'Día de partido', entrenamiento_normal: 'Entrenamiento' };
+  const recent = [...DAYS].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+  document.querySelector('#tblOpsDays tbody').innerHTML = recent.map(day => {
+    const stats = statsForDays([day.id]);
+    return `<tr><td>${day.date}</td><td>${typeLabel[day.day_type] || 'Sin clasificar'}</td><td class="num">${stats.tickets}</td><td class="num">${stats.uds}</td><td class="num">${money(stats.venta)}</td></tr>`;
+  }).join('') || '<tr><td colspan="5">Sin actividad en el filtro actual.</td></tr>';
+
+  const noCost = productUnits().filter(row => PRODUCTS.find(p => p.id === row.id)?.cost_price == null);
+  const unknownStock = purchaseRows.filter(row => row.stock == null).length;
+  const unclassified = DAYS.filter(day => !day.day_type).length;
+  document.getElementById('opsActions').innerHTML = [
+    { n: noCost.length, title: 'Costos por completar', text: 'No se incluyen en utilidad ni margen.' },
+    { n: unknownStock, title: 'Productos sin conteo reciente', text: 'Necesitan conteo antes de confirmar una compra.' },
+    { n: toBuy.length, title: 'Productos con compra sugerida', text: 'Calculados para 7 días de cobertura.' },
+    { n: unclassified, title: 'Días por clasificar', text: 'Define evento, partido o entrenamiento.' }
+  ].map(item => `<div class="guided-action"><span class="n">${item.n}</span><div><b>${item.title}</b><span class="footnote">${item.text}</span></div></div>`).join('');
+
+  document.querySelector('#tblOpsCompras tbody').innerHTML = toBuy.slice(0, 8).map(row => `<tr><td>${row.name}</td><td class="num">${row.stock ?? '—'}</td><td class="num">${row.unitsPerDay.toFixed(1)}</td><td class="num pos">${row.suggested}</td></tr>`).join('') || '<tr><td colspan="4">No hay compras urgentes con la información disponible.</td></tr>';
+}
+
+function renderGuidedView() {
+  const sports = [
+    ['futbol', 'Fútbol'], ['beisbol', 'Béisbol / Softbol'], ['otro', 'Normal / Otro']
+  ].map(([key, label]) => {
+    const ids = DAYS.filter(day => (day.sport || 'otro') === key).map(day => day.id);
+    const stats = statsForDays(ids);
+    return { key, label, ids, stats, average: stats.dias ? stats.venta / stats.dias : 0 };
+  }).filter(row => row.ids.length);
+  const best = [...sports].sort((a, b) => b.average - a.average)[0];
+  const top = productUnits()[0];
+  const sales = TICKETS.reduce((sum, ticket) => sum + Number(ticket.amount || 0), 0);
+  const purchaseRows = purchaseRowsFor(DAYS, ITEMS, INV_COUNTS, 7);
+  const toBuy = purchaseRows.filter(row => Number(row.suggested) > 0);
+  const noCost = productUnits().filter(row => PRODUCTS.find(p => p.id === row.id)?.cost_price == null);
+
+  document.getElementById('guidedHero').innerHTML = best
+    ? `<div class="eyebrow">Hallazgo principal del filtro</div><h3>${best.label} promedia ${money(best.average)} por día</h3><p>Se calculó con ${best.stats.dias} día(s) y ${best.stats.tickets} tickets. Usa la comparativa detallada para revisar los productos que explican el resultado.</p>`
+    : '<div class="eyebrow">Hallazgo principal</div><h3>Aún no hay suficientes días en este filtro</h3><p>Amplía el rango o cambia los filtros para generar recomendaciones.</p>';
+  document.getElementById('guidedKpis').innerHTML = [
+    ['Venta total', money(sales), 'Incluye productos sin costo'],
+    ['Producto más solicitado', top ? top.name : '—', top ? `${top.qty} unidades` : 'Sin datos'],
+    ['Compra próxima', toBuy.length ? `${toBuy.length} productos` : 'Sin urgencias', 'Según inventario conocido']
+  ].map(([label, value, detail]) => `<div class="card"><span class="metric-label">${label}</span><div class="metric-value">${value}</div><span class="footnote">${detail}</span></div>`).join('');
+  document.getElementById('guidedActions').innerHTML = [
+    { n: noCost.length, title: 'Completar costos pendientes', text: `${noCost.length} producto(s) vendidos no tienen utilidad calculada.` },
+    { n: toBuy.length, title: 'Preparar la siguiente compra', text: `${toBuy.length} producto(s) requieren reposición para 7 días.` },
+    { n: top?.qty || 0, title: top ? `Asegurar existencia de ${top.name}` : 'Revisar productos', text: top ? 'Es el producto con mayor salida en el filtro actual.' : 'No hay ventas suficientes.' }
+  ].map(item => `<div class="guided-action"><span class="n">${item.n}</span><div><b>${item.title}</b><span class="footnote">${item.text}</span></div></div>`).join('');
+  const maxAverage = Math.max(1, ...sports.map(row => row.average));
+  document.getElementById('guidedSportCompare').innerHTML = sports.map(row => `<div class="sport-compare-row"><span>${row.label}</span><div class="sport-compare-track"><div class="sport-compare-fill" style="width:${Math.round(row.average / maxAverage * 100)}%"></div></div><b class="num">${money(row.average)}</b></div>`).join('') || '<p class="footnote">Sin datos para comparar.</p>';
 }
 
 function renderDiaPorDia() {
@@ -1043,6 +1243,7 @@ function statsForDays(dayIds) {
   const tks = ALL_TICKETS.filter(t => set.has(t.sale_day_id));
   const tkIdSet = new Set(tks.map(t => t.id));
   const items = ALL_ITEMS.filter(it => tkIdSet.has(it.ticket_id));
+  const uds = items.reduce((sum, item) => sum + Number(item.qty || 0), 0);
   const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
   const venta = tks.reduce((s, t) => s + Number(t.amount), 0);
   let costo = 0, ventaConCosto = 0;
@@ -1051,7 +1252,7 @@ function statsForDays(dayIds) {
     if (p && p.cost_price != null) { costo += p.cost_price * it.qty; ventaConCosto += p.sell_price * it.qty; }
   });
   const utilidad = ventaConCosto - costo;
-  return { dias: dayIds.length, tickets: tks.length, venta, utilidad: ventaConCosto ? utilidad : null, ticketProm: tks.length ? venta / tks.length : null };
+  return { dias: dayIds.length, tickets: tks.length, uds, venta, utilidad: ventaConCosto ? utilidad : null, ticketProm: tks.length ? venta / tks.length : null };
 }
 
 function renderComparativa() {
@@ -1269,42 +1470,156 @@ function renderCompras() {
   const el = document.getElementById('coberturaDias');
   if (!el) return;
   const cobertura = parseInt(el.value) || 7;
-  const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
-
-  // consumo promedio diario (uds/dia) en el periodo filtrado
-  const consumo = new Map(); // product_id -> uds totales
-  ITEMS.forEach(it => { if (it.product_id) consumo.set(it.product_id, (consumo.get(it.product_id) || 0) + it.qty); });
-  const nDias = DAYS.length || 1;
-
-  // ultima existencia capturada por producto (el conteo mas reciente por fecha, dentro del periodo filtrado)
-  const dayById = new Map(DAYS.map(d => [d.id, d]));
-  const latest = new Map(); // product_id -> {fecha, valor}
-  INV_COUNTS.forEach(c => {
-    if (!c.product_id) return;
-    const day = dayById.get(c.sale_day_id);
-    if (!day) return;
-    const valor = c.physical_count != null ? c.physical_count
-      : (c.opening_stock != null && c.sold != null ? c.opening_stock - c.sold : null);
-    if (valor == null) return;
-    const prev = latest.get(c.product_id);
-    if (!prev || day.date > prev.fecha) latest.set(c.product_id, { fecha: day.date, valor });
-  });
-
-  const rows = [...consumo.keys()].map(pid => {
-    const p = prodById.get(pid);
-    const udsDia = consumo.get(pid) / nDias;
-    const exist = latest.has(pid) ? latest.get(pid).valor : null;
-    const coberturaActual = (exist != null && udsDia > 0) ? exist / udsDia : null;
-    const sugerido = (exist != null) ? Math.max(0, Math.ceil(udsDia * cobertura - exist)) : null;
-    return { nombre: p ? p.name : '?', udsDia, exist, coberturaActual, sugerido };
-  }).sort((a, b) => (a.coberturaActual ?? 999) - (b.coberturaActual ?? 999));
+  const rows = purchaseRowsFor(DAYS, ITEMS, INV_COUNTS, cobertura);
 
   document.querySelector('#tblCompras tbody').innerHTML = rows.map(r => `
-    <tr><td>${r.nombre}</td><td class="num">${r.udsDia.toFixed(1)}</td>
-      <td class="num">${r.exist ?? '—'}</td>
-      <td class="num ${r.coberturaActual != null && r.coberturaActual < 2 ? 'neg' : ''}">${r.coberturaActual != null ? r.coberturaActual.toFixed(1) + ' días' : '—'}</td>
-      <td class="num ${r.sugerido ? 'pos' : ''}">${r.sugerido != null ? r.sugerido : 'sin dato de existencia'}</td></tr>
+    <tr><td>${r.name}</td><td class="num">${r.unitsPerDay.toFixed(1)}</td>
+      <td class="num">${r.stock ?? '—'}</td>
+      <td class="num ${r.currentCoverage != null && r.currentCoverage < 2 ? 'neg' : ''}">${r.currentCoverage != null ? r.currentCoverage.toFixed(1) + ' días' : '—'}</td>
+      <td class="num ${r.suggested ? 'pos' : ''}">${r.suggested != null ? r.suggested : 'sin dato de existencia'}</td></tr>
   `).join('') || '<tr><td colspan="5">Sin ventas en el periodo filtrado.</td></tr>';
+}
+
+// ---------------- predictor de compra para eventos ----------------
+async function loadPredictionData() {
+  let dayResult = await supabase.from('sale_days')
+    .select('id,date,sport,day_type,event_name,event_tags')
+    .order('date', { ascending: false });
+  if (dayResult.error && /event_tags/i.test(dayResult.error.message)) {
+    dayResult = await supabase.from('sale_days')
+      .select('id,date,sport,day_type,event_name')
+      .order('date', { ascending: false });
+  }
+  if (dayResult.error) {
+    document.getElementById('predictorSummary').innerHTML = `<div class="msg err">No pude cargar el historial para el predictor: ${dayResult.error.message}</div>`;
+    return;
+  }
+  PRED_DAYS = (dayResult.data || []).map(day => ({ ...day, event_tags: day.event_tags || [] }));
+  const dayIds = PRED_DAYS.map(day => day.id);
+  if (!dayIds.length) return;
+  PRED_TICKETS = await selectAllIn('tickets_view', 'id,sale_day_id,ts,amount', 'sale_day_id', dayIds);
+  const ticketIds = PRED_TICKETS.map(ticket => ticket.id);
+  PRED_ITEMS = [];
+  for (let i = 0; i < ticketIds.length; i += 500) {
+    PRED_ITEMS.push(...await selectAllIn('ticket_items', 'id,ticket_id,product_id,product_name_raw,qty', 'ticket_id', ticketIds.slice(i, i + 500)));
+  }
+  const [gamesResult, invResult] = await Promise.all([
+    supabase.from('games').select('id,sale_day_id,start_time').in('sale_day_id', dayIds),
+    supabase.from('inventory_counts').select('id,sale_day_id,product_id,opening_stock,sold,physical_count').in('sale_day_id', dayIds)
+  ]);
+  PRED_GAMES = gamesResult.data || [];
+  PRED_INV = invResult.data || [];
+}
+
+function predictionComparableDays(type, targetDate) {
+  const beforeTarget = PRED_DAYS.filter(day => !targetDate || day.date < targetDate);
+  let days = [], exact = true, label = '';
+  if (type === 'club_puebla') {
+    days = beforeTarget.filter(day => (day.event_tags || []).includes('club_puebla') || /club\s*puebla/i.test(day.event_name || ''));
+    label = 'eventos históricos etiquetados Club Puebla';
+    if (!days.length) {
+      days = beforeTarget.filter(day => day.day_type === 'evento_especial' && day.sport === 'futbol');
+      exact = false;
+      label = 'eventos especiales de fútbol (referencia temporal)';
+    }
+  } else if (type === 'futbol') {
+    days = beforeTarget.filter(day => day.sport === 'futbol' && (day.day_type === 'evento_especial' || day.day_type === 'dia_partido'));
+    label = 'eventos y días de partido de fútbol';
+  } else if (type === 'beisbol') {
+    days = beforeTarget.filter(day => day.sport === 'beisbol' && (day.day_type === 'evento_especial' || day.day_type === 'dia_partido'));
+    label = 'eventos y días de partido de béisbol/softbol';
+  } else {
+    days = beforeTarget.filter(day => day.day_type === 'evento_especial');
+    label = 'todos los eventos especiales';
+  }
+  return { days, exact, label };
+}
+
+function estimatedInventory(productId, targetDate) {
+  const dayById = new Map(PRED_DAYS.map(day => [day.id, day]));
+  const candidates = PRED_INV.filter(count => count.product_id === productId).map(count => {
+    const day = dayById.get(count.sale_day_id);
+    const value = count.physical_count != null ? Number(count.physical_count)
+      : (count.opening_stock != null && count.sold != null ? Number(count.opening_stock) - Number(count.sold) : null);
+    return day && value != null && (!targetDate || day.date < targetDate) ? { date: day.date, value } : null;
+  }).filter(Boolean).sort((a, b) => b.date.localeCompare(a.date));
+  if (!candidates.length) return null;
+  const latest = candidates[0];
+  const ticketById = new Map(PRED_TICKETS.map(ticket => [ticket.id, ticket]));
+  let soldAfter = 0;
+  PRED_ITEMS.forEach(item => {
+    if (item.product_id !== productId) return;
+    const ticket = ticketById.get(item.ticket_id);
+    const day = ticket ? dayById.get(ticket.sale_day_id) : null;
+    if (day && day.date > latest.date && (!targetDate || day.date < targetDate)) soldAfter += Number(item.qty || 0);
+  });
+  return { value: Math.max(0, latest.value - soldAfter), countDate: latest.date, soldAfter };
+}
+
+function renderPrediction() {
+  const table = document.querySelector('#tblPrediction tbody');
+  if (!table) return;
+  if (!PRED_DAYS.length) {
+    table.innerHTML = '<tr><td colspan="6">Cargando historial...</td></tr>';
+    return;
+  }
+  const targetDate = document.getElementById('predDate').value;
+  const type = document.getElementById('predType').value;
+  const targetGames = Math.max(1, parseInt(document.getElementById('predGames').value) || 1);
+  const safety = Math.max(0, Number(document.getElementById('predSafety').value) || 0);
+  const comparison = predictionComparableDays(type, targetDate);
+  const dayIds = new Set(comparison.days.map(day => day.id));
+  const tickets = PRED_TICKETS.filter(ticket => dayIds.has(ticket.sale_day_id));
+  const ticketIds = new Set(tickets.map(ticket => ticket.id));
+  const items = PRED_ITEMS.filter(item => ticketIds.has(item.ticket_id) && item.product_id);
+  if (!comparison.days.length || !items.length) {
+    document.getElementById('predictorSummary').innerHTML = '<div class="msg warn">No hay eventos históricos comparables con productos identificados. Etiqueta eventos anteriores o amplía el historial antes de usar una predicción.</div>';
+    table.innerHTML = '<tr><td colspan="6">Sin base histórica suficiente.</td></tr>';
+    return;
+  }
+
+  const gameCounts = new Map();
+  PRED_GAMES.forEach(game => gameCounts.set(game.sale_day_id, (gameCounts.get(game.sale_day_id) || 0) + 1));
+  const daysWithGames = comparison.days.filter(day => (gameCounts.get(day.id) || 0) > 0);
+  const useGameScale = daysWithGames.length >= Math.ceil(comparison.days.length / 2);
+  const averageHistoricalGames = useGameScale
+    ? daysWithGames.reduce((sum, day) => sum + gameCounts.get(day.id), 0) / daysWithGames.length
+    : 1;
+  const gameScale = useGameScale ? targetGames / averageHistoricalGames : 1;
+  const prodById = new Map(PRODUCTS.map(product => [product.id, product]));
+  const aggregate = new Map();
+  items.forEach(item => {
+    const current = aggregate.get(item.product_id) || { qty: 0, days: new Set() };
+    current.qty += Number(item.qty || 0);
+    const ticket = PRED_TICKETS.find(row => row.id === item.ticket_id);
+    if (ticket) current.days.add(ticket.sale_day_id);
+    aggregate.set(item.product_id, current);
+  });
+  const rows = [...aggregate.entries()].map(([productId, values]) => {
+    const product = prodById.get(productId);
+    const historicalAverage = values.qty / comparison.days.length;
+    const demand = Math.max(1, Math.ceil(historicalAverage * gameScale * (1 + safety)));
+    const inventory = estimatedInventory(productId, targetDate);
+    const buy = inventory ? Math.max(0, demand - inventory.value) : null;
+    return { productId, name: product?.name || 'Producto', historicalAverage, demand, inventory, buy, observedDays: values.days.size };
+  }).sort((a, b) => {
+    if (a.buy == null && b.buy != null) return 1;
+    if (a.buy != null && b.buy == null) return -1;
+    return (b.buy || b.demand) - (a.buy || a.demand);
+  });
+
+  const confidence = comparison.exact && comparison.days.length >= 3 ? 'media' : 'baja';
+  const fallbackNote = comparison.exact ? '' : ' <b>No había días etiquetados como Club Puebla</b>, así que esta primera estimación usa eventos especiales de fútbol y debe tomarse como referencia provisional.';
+  const gameNote = useGameScale
+    ? ` Se ajustó de ${averageHistoricalGames.toFixed(1)} a ${targetGames} partido(s).`
+    : ' No se ajustó por número de partidos porque todavía faltan partidos capturados en la mayoría de los eventos históricos.';
+  document.getElementById('predictorSummary').innerHTML = `<div class="msg ${comparison.exact ? 'ok' : 'warn'}"><b>${comparison.days.length} día(s) comparables</b> · ${comparison.label} · confianza ${confidence}. ${Math.round(safety * 100)}% de colchón.${gameNote}${fallbackNote}</div>`;
+  table.innerHTML = rows.map(row => {
+    const inventoryText = row.inventory ? `${row.inventory.value} <span class="tiny">(${row.inventory.countDate})</span>` : 'Sin conteo';
+    const buyText = row.buy == null ? 'Contar primero' : row.buy;
+    const basis = `${row.observedDays}/${comparison.days.length} día(s) con venta`;
+    return `<tr class="${row.buy == null || row.buy > 0 ? 'prediction-need' : 'prediction-ok'}"><td>${row.name}</td><td class="num">${row.historicalAverage.toFixed(1)}</td><td class="num"><b>${row.demand}</b></td><td class="num">${inventoryText}</td><td class="num ${row.buy > 0 ? 'pos' : ''}"><b>${buyText}</b></td><td>${basis}</td></tr>`;
+  }).join('');
 }
 
 // ---------------- calendario de partidos ----------------
@@ -1325,12 +1640,21 @@ async function loadScheduledGames() {
     .select('id, date, start_time, sport, notes, created_by, profiles(full_name)')
     .order('date').order('start_time');
   if (error) { document.getElementById('calMsg').innerHTML = `<div class="msg err">No pude cargar el calendario: ${error.message}</div>`; return; }
+  SCHEDULED_GAMES = data || [];
+
+  const predictorDate = document.getElementById('predDate')?.value;
+  const scheduledForPrediction = SCHEDULED_GAMES.filter(game => game.date === predictorDate);
+  if (scheduledForPrediction.length) {
+    document.getElementById('predGames').value = scheduledForPrediction.length;
+    const mentionsClubPuebla = scheduledForPrediction.some(game => /club\s*puebla/i.test(game.notes || ''));
+    document.getElementById('predType').value = mentionsClubPuebla ? 'club_puebla' : (scheduledForPrediction[0].sport || 'otro');
+  }
 
   const sportLabel = { futbol: 'Fútbol', beisbol: 'Béisbol / Softbol', otro: 'Otro' };
   const today = toISODate(new Date());
-  const upcoming = data.filter(g => g.date >= today);
+  const upcoming = SCHEDULED_GAMES.filter(g => g.date >= today);
 
-  document.querySelector('#tblSchedGames tbody').innerHTML = data.map(g => `
+  document.querySelector('#tblSchedGames tbody').innerHTML = SCHEDULED_GAMES.map(g => `
     <tr><td>${g.date}</td><td>${g.start_time}</td><td>${sportLabel[g.sport] || g.sport}</td>
       <td>${g.notes || '—'}</td><td>${g.profiles ? g.profiles.full_name || '—' : '—'}</td>
       <td class="noprint"><button class="btn sec sm" type="button" onclick="window.__delSchedGame('${g.id}')">Quitar</button></td></tr>
@@ -1346,16 +1670,21 @@ async function loadScheduledGames() {
   } else {
     wEl.innerHTML = `<div class="msg warn">No hay partidos agendados para este fin de semana (${sat} y ${sun}) todavía.</div>`;
   }
+  if (PRED_DAYS.length) renderPrediction();
 }
 
 async function addScheduledGame(e) {
   e.preventDefault();
   const { data: { session } } = await supabase.auth.getSession();
+  const eventType = document.getElementById('sgEventType').value;
+  const typedNote = document.getElementById('sgNotes').value.trim();
+  const eventLabel = eventType === 'club_puebla' ? 'Club Puebla' : (eventType === 'especial' ? 'Evento especial' : '');
+  const notes = [eventLabel, typedNote].filter(Boolean).join(' — ') || null;
   const payload = {
     date: document.getElementById('sgDate').value,
     start_time: document.getElementById('sgTime').value,
     sport: document.getElementById('sgSport').value,
-    notes: document.getElementById('sgNotes').value.trim() || null,
+    notes,
     created_by: session.user.id,
   };
   const { error } = await supabase.from('scheduled_games').insert(payload);
