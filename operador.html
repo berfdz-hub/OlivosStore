@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Captura · Tienda Olivos</title>
+<title>Captura · Olivos Store</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="theme-color" content="#0F3325">
+<meta name="theme-color" content="#F4F6F1">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Olivos Store">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -17,7 +17,7 @@
 
 <div class="topbar">
   <div class="wrap">
-    <div class="brand"><span class="dot"></span> Tienda Olivos</div>
+    <div class="brand"><img class="brand-mark" src="icons/icon-192.png" alt=""><span>Olivos Store</span></div>
     <div class="who">
       <span id="whoName"></span>
       <span class="role-pill" id="rolePill">OPERADOR</span>
@@ -39,7 +39,7 @@
   <form id="formDay">
     <div class="card">
       <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:14px">Datos del día</h3>
-      <div class="grid grid3">
+      <div class="grid grid4">
         <div class="field">
           <label>Fecha</label>
           <input type="date" id="fDate" required>
@@ -54,8 +54,32 @@
           </select>
         </div>
         <div class="field">
+          <label>Categoría del día</label>
+          <select id="fDayCategory">
+            <option value="entrenamiento_normal" selected>Entrenamiento normal</option>
+            <option value="dia_partido">Día de partido</option>
+            <option value="evento_especial">Evento especial</option>
+          </select>
+        </div>
+        <div class="field">
           <label>Tarifa estacionamiento</label>
           <input type="number" id="fRate" value="30" min="0">
+        </div>
+      </div>
+      <div class="grid grid2">
+        <div class="field">
+          <label>Nombre del evento (opcional)</label>
+          <input type="text" id="fEventName" placeholder="ej. Torneo Club Puebla">
+        </div>
+        <div class="field">
+          <label>Etiquetas del evento (elige una o varias)</label>
+          <div class="check-group" id="fEventTags">
+            <label class="check-option"><input type="checkbox" value="futbol"> Fútbol</label>
+            <label class="check-option"><input type="checkbox" value="beisbol"> Béisbol / Softbol</label>
+            <label class="check-option"><input type="checkbox" value="club_puebla"> Club Puebla</label>
+            <label class="check-option"><input type="checkbox" value="otro"> Otro</label>
+          </div>
+          <div class="hint">Se guardan cuando la categoría del día es Evento especial.</div>
         </div>
       </div>
       <div class="field">
@@ -101,6 +125,9 @@
           <div class="field" style="margin-bottom:0"><input type="text" id="mdAllEvento" placeholder="Nombre del evento (opcional)"></div>
           <button type="button" class="btn sec sm" id="btnApplyAll">Aplicar a todos</button>
         </div>
+        <div class="field" style="margin:10px 0 0"><label>Etiquetas para todos</label><div class="check-group compact" id="mdAllTags">
+          <label class="check-option"><input type="checkbox" value="futbol"> Fútbol</label><label class="check-option"><input type="checkbox" value="beisbol"> Béisbol</label><label class="check-option"><input type="checkbox" value="club_puebla"> Club Puebla</label><label class="check-option"><input type="checkbox" value="otro"> Otro</label>
+        </div></div>
       </div>
       <div style="border:1px solid var(--amber);border-radius:8px;padding:12px;margin-bottom:14px;background:var(--amber-soft)">
         <label style="margin-bottom:8px">Aplicar solo a los días marcados ⚡ (venta fuerte)</label>
@@ -114,9 +141,12 @@
           <div class="field" style="margin-bottom:0"><input type="text" id="mdFlagEvento" placeholder="Nombre del evento (ej. Torneo Julio)"></div>
           <button type="button" class="btn sec sm" id="btnApplyFlagged">Aplicar a marcados</button>
         </div>
+        <div class="field" style="margin:10px 0 0"><label>Etiquetas para días marcados</label><div class="check-group compact" id="mdFlagTags">
+          <label class="check-option"><input type="checkbox" value="futbol"> Fútbol</label><label class="check-option"><input type="checkbox" value="beisbol"> Béisbol</label><label class="check-option"><input type="checkbox" value="club_puebla"> Club Puebla</label><label class="check-option"><input type="checkbox" value="otro"> Otro</label>
+        </div></div>
       </div>
       <div class="scroll">
-        <table id="tblMultiDay"><thead><tr><th>Fecha</th><th class="num">Tickets</th><th class="num">Venta</th><th>Deporte</th><th>Categoría</th><th>Evento</th></tr></thead><tbody></tbody></table>
+        <table id="tblMultiDay"><thead><tr><th>Fecha</th><th class="num">Tickets</th><th class="num">Venta</th><th>Deporte</th><th>Categoría</th><th>Evento</th><th>Etiquetas</th></tr></thead><tbody></tbody></table>
       </div>
     </div>
 
@@ -144,6 +174,23 @@ window.doLogout = signOut;
 let CATALOG = [];
 let PARSED_TICKETS = null;
 let PARSED_DAYS = null; // [{date, tickets:[], venta}] cuando el CSV trae mas de un dia
+
+function checkedTags(root) {
+  return [...root.querySelectorAll('input[type="checkbox"]:checked')].map(input => input.value);
+}
+
+function setCheckedTags(root, values) {
+  const selected = new Set(values);
+  root.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = selected.has(input.value); });
+}
+
+function eventTagChecks(className, values = []) {
+  const selected = new Set(values);
+  const options = [['futbol', 'Fútbol'], ['beisbol', 'Béisbol'], ['club_puebla', 'Club Puebla'], ['otro', 'Otro']];
+  return `<div class="check-group compact">${options.map(([value, label]) =>
+    `<label class="check-option"><input type="checkbox" class="${className}" value="${value}" ${selected.has(value) ? 'checked' : ''}> ${label}</label>`
+  ).join('')}</div>`;
+}
 
 function addGame(hora = '', ap = '', ac = '', cobra = true, nota = '') {
   const wrap = document.createElement('div');
@@ -335,6 +382,7 @@ function renderMultiDayTable() {
         <option value="evento_especial">Evento especial</option><option value="dia_partido">Día de partido</option><option value="entrenamiento_normal" selected>Entrenamiento normal</option>
       </select></td>
       <td><input type="text" class="mdEvento" placeholder="opcional" style="min-width:140px"></td>
+      <td class="mdTags">${eventTagChecks('mdTag')}</td>
     </tr>`).join('');
 }
 
@@ -343,20 +391,24 @@ function wireApplyAll() {
     const sport = document.getElementById('mdAllSport').value;
     const categoria = document.getElementById('mdAllCategoria').value;
     const evento = document.getElementById('mdAllEvento').value.trim();
+    const tags = checkedTags(document.getElementById('mdAllTags'));
     document.querySelectorAll('#tblMultiDay tbody tr').forEach(tr => {
       tr.querySelector('.mdSport').value = sport;
       tr.querySelector('.mdCategoria').value = categoria;
       if (evento) tr.querySelector('.mdEvento').value = evento;
+      setCheckedTags(tr.querySelector('.mdTags'), tags);
     });
   });
   document.getElementById('btnApplyFlagged').addEventListener('click', () => {
     const sport = document.getElementById('mdFlagSport').value;
     const categoria = document.getElementById('mdFlagCategoria').value;
     const evento = document.getElementById('mdFlagEvento').value.trim();
+    const tags = checkedTags(document.getElementById('mdFlagTags'));
     document.querySelectorAll('#tblMultiDay tbody tr.row-flag').forEach(tr => {
       tr.querySelector('.mdSport').value = sport;
       tr.querySelector('.mdCategoria').value = categoria;
       if (evento) tr.querySelector('.mdEvento').value = evento;
+      setCheckedTags(tr.querySelector('.mdTags'), tags);
     });
   });
 }
@@ -405,14 +457,25 @@ async function onSubmit(e) {
 async function submitSingleDay(session) {
   const date = document.getElementById('fDate').value;
   const sport = document.getElementById('fSport').value;
+  const day_type = document.getElementById('fDayCategory').value;
+  const event_name = document.getElementById('fEventName').value.trim() || null;
+  const event_tags = day_type === 'evento_especial' ? checkedTags(document.getElementById('fEventTags')) : [];
   const rate = parseFloat(document.getElementById('fRate').value) || 0;
   const notes = document.getElementById('fNotes').value.trim();
   const games = getGames();
 
-  const { data: day, error: dayErr } = await supabase.from('sale_days').insert({
-    date, sport, notes: notes || null, status: 'submitted', created_by: session.user.id
-  }).select().single();
-  if (dayErr) throw new Error('No pude crear el día (¿ya existe una captura para esa fecha?): ' + dayErr.message);
+  const dayPayload = {
+    date, sport, day_type, event_name, notes: notes || null,
+    status: 'submitted', created_by: session.user.id
+  };
+  if (event_tags.length) dayPayload.event_tags = event_tags;
+  const { data: day, error: dayErr } = await supabase.from('sale_days').insert(dayPayload).select().single();
+  if (dayErr) {
+    const detail = /event_tags/i.test(dayErr.message)
+      ? 'Falta activar las etiquetas en Supabase con el archivo etiquetas_evento.sql.'
+      : dayErr.message;
+    throw new Error('No pude crear el día (¿ya existe una captura para esa fecha?): ' + detail);
+  }
 
   if (games.length) {
     const gamesRows = games.map(g => ({
@@ -445,12 +508,15 @@ async function submitMultiDay(session) {
     const sport = tr.querySelector('.mdSport').value;
     const day_type = tr.querySelector('.mdCategoria').value;
     const event_name = tr.querySelector('.mdEvento').value.trim() || null;
+    const event_tags = day_type === 'evento_especial' ? checkedTags(tr.querySelector('.mdTags')) : [];
     const dayData = PARSED_DAYS.find(d => d.date === date);
     try {
-      const { data: day, error: dayErr } = await supabase.from('sale_days').insert({
-        date, sport, day_type, event_name, status: 'submitted', created_by: session.user.id
-      }).select().single();
-      if (dayErr) throw new Error(dayErr.message);
+      const dayPayload = { date, sport, day_type, event_name, status: 'submitted', created_by: session.user.id };
+      if (event_tags.length) dayPayload.event_tags = event_tags;
+      const { data: day, error: dayErr } = await supabase.from('sale_days').insert(dayPayload).select().single();
+      if (dayErr) throw new Error(/event_tags/i.test(dayErr.message)
+        ? 'Falta activar las etiquetas en Supabase con el archivo etiquetas_evento.sql.'
+        : dayErr.message);
       await insertTicketsForDay(day.id, dayData.tickets);
       results.push({ date, ok: true });
     } catch (err) {
