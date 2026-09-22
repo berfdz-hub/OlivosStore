@@ -162,7 +162,7 @@
         <div>
           <div class="eyebrow">Preparar próximo evento</div>
           <h3>Predictor de compra</h3>
-          <p class="footnote">Estima lo que se venderá usando eventos históricos comparables y descuenta el inventario conocido. No inventa existencias: cuando falta un conteo, lo marca para revisión.</p>
+          <p class="footnote">Estima lo que se venderá usando eventos históricos comparables y descuenta el inventario conocido. El CSV de recibos de Loyverse trae ventas y costos, pero no la existencia actual; cuando falta un conteo, la app la marca como desconocida.</p>
         </div>
         <span class="predictor-badge">Basado en tus datos</span>
       </div>
@@ -1613,10 +1613,15 @@ function renderPrediction() {
   const gameNote = useGameScale
     ? ` Se ajustó de ${averageHistoricalGames.toFixed(1)} a ${targetGames} partido(s).`
     : ' No se ajustó por número de partidos porque todavía faltan partidos capturados en la mayoría de los eventos históricos.';
-  document.getElementById('predictorSummary').innerHTML = `<div class="msg ${comparison.exact ? 'ok' : 'warn'}"><b>${comparison.days.length} día(s) comparables</b> · ${comparison.label} · confianza ${confidence}. ${Math.round(safety * 100)}% de colchón.${gameNote}${fallbackNote}</div>`;
+  const knownInventory = rows.filter(row => row.inventory).length;
+  const unknownInventory = rows.length - knownInventory;
+  const inventoryNote = unknownInventory
+    ? `<div class="msg warn"><b>Inventario incompleto:</b> ${knownInventory} de ${rows.length} producto(s) proyectados tienen existencia conocida; ${unknownInventory} requieren conteo. <b>Existencia desconocida no significa existencia en cero ni producto eliminado.</b></div>`
+    : `<div class="msg ok"><b>Inventario disponible:</b> los ${rows.length} producto(s) proyectados tienen un conteo de referencia.</div>`;
+  document.getElementById('predictorSummary').innerHTML = `<div class="msg ${comparison.exact ? 'ok' : 'warn'}"><b>${comparison.days.length} día(s) comparables</b> · ${comparison.label} · confianza ${confidence}. ${Math.round(safety * 100)}% de colchón.${gameNote}${fallbackNote}</div>${inventoryNote}`;
   table.innerHTML = rows.map(row => {
-    const inventoryText = row.inventory ? `${row.inventory.value} <span class="tiny">(${row.inventory.countDate})</span>` : 'Sin conteo';
-    const buyText = row.buy == null ? 'Contar primero' : row.buy;
+    const inventoryText = row.inventory ? `${row.inventory.value} <span class="tiny">(${row.inventory.countDate})</span>` : '<span class="tiny"><b>Existencia desconocida</b></span>';
+    const buyText = row.buy == null ? 'Capturar inventario' : row.buy;
     const basis = `${row.observedDays}/${comparison.days.length} día(s) con venta`;
     return `<tr class="${row.buy == null || row.buy > 0 ? 'prediction-need' : 'prediction-ok'}"><td>${row.name}</td><td class="num">${row.historicalAverage.toFixed(1)}</td><td class="num"><b>${row.demand}</b></td><td class="num">${inventoryText}</td><td class="num ${row.buy > 0 ? 'pos' : ''}"><b>${buyText}</b></td><td>${basis}</td></tr>`;
   }).join('');
