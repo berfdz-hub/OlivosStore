@@ -66,6 +66,7 @@
           <input type="number" id="fRate" value="30" min="0">
         </div>
       </div>
+      <div id="existingDayNotice"></div>
       <div class="grid grid2">
         <div class="field">
           <label>Nombre del evento (opcional)</label>
@@ -174,6 +175,7 @@ window.doLogout = signOut;
 let CATALOG = [];
 let PARSED_TICKETS = null;
 let PARSED_DAYS = null; // [{date, tickets:[], venta}] cuando el CSV trae mas de un dia
+let CURRENT_PROFILE = null;
 
 function checkedTags(root) {
   return [...root.querySelectorAll('input[type="checkbox"]:checked')].map(input => input.value);
@@ -252,6 +254,7 @@ const money = n => '$' + Number(n).toLocaleString('es-MX', { maximumFractionDigi
 async function init() {
   const profile = await requireRole(['operador', 'admin']);
   if (!profile) return;
+  CURRENT_PROFILE = profile;
   document.getElementById('whoName').textContent = profile.full_name || profile.email;
   if (profile.role === 'admin') {
     const pill = document.getElementById('rolePill');
@@ -261,7 +264,10 @@ async function init() {
   document.getElementById('fDate').value = new Date().toISOString().slice(0, 10);
   addGame();
   updateDayLabel();
-  document.getElementById('fDate').addEventListener('change', updateDayLabel);
+  document.getElementById('fDate').addEventListener('change', () => {
+    updateDayLabel();
+    checkExistingDate();
+  });
 
   const { data: products, error } = await supabase
     .from('products_view').select('id, name, category, sell_price').eq('active', true).order('name');
@@ -279,6 +285,31 @@ async function init() {
 
   loadDays(profile);
   showWeekendNotice();
+  checkExistingDate();
+}
+
+async function findDayByDate(date) {
+  if (!date) return null;
+  const { data, error } = await supabase.from('sale_days')
+    .select('id,date,sport,status')
+    .eq('date', date)
+    .maybeSingle();
+  if (error) throw new Error('No pude revisar si la fecha ya existe: ' + error.message);
+  return data;
+}
+
+async function checkExistingDate() {
+  const date = document.getElementById('fDate').value;
+  const el = document.getElementById('existingDayNotice');
+  if (!date) { el.innerHTML = ''; return; }
+  try {
+    const day = await findDayByDate(date);
+    el.innerHTML = day
+      ? '<div class="msg info" style="margin-top:12px"><b>Esta fecha ya tiene ventas registradas.</b> Puedes completar aquí sus partidos, autos y estacionamiento. Las ventas existentes se conservarán.</div>'
+      : '';
+  } catch (_) {
+    el.innerHTML = '';
+  }
 }
 
 async function showWeekendNotice() {
@@ -350,6 +381,7 @@ function onCsvChange(e) {
         if (distinctDates.length === 1 && distinctDates[0] !== document.getElementById('fDate').value) {
           document.getElementById('fDate').value = distinctDates[0];
           updateDayLabel();
+          checkExistingDate();
         }
       }
       document.getElementById('csvSummary').innerHTML = html;
@@ -413,9 +445,21 @@ function wireApplyAll() {
   });
 }
 
+function ticketIdentity(ticket) {
+  return `${ticket.ticket_number || ''}|${new Date(ticket.ts).toISOString()}`;
+}
+
 async function insertTicketsForDay(dayId, tickets) {
-  if (!tickets || !tickets.length) return;
-  const ticketRows = tickets.map(t => ({
+  if (!tickets || !tickets.length) return { inserted: 0, skipped: 0 };
+  const { data: existing, error: readErr } = await supabase.from('tickets')
+    .select('ticket_number,ts')
+    .eq('sale_day_id', dayId);
+  if (readErr) throw new Error('No pude revisar los tickets existentes: ' + readErr.message);
+  const existingKeys = new Set((existing || []).map(ticketIdentity));
+  const pending = tickets.filter(t => !existingKeys.has(ticketIdentity(t)));
+  if (!pending.length) return { inserted: 0, skipped: tickets.length };
+
+  const ticketRows = pending.map(t => ({
     sale_day_id: dayId, ticket_number: t.ticket_number, ts: t.ts,
     amount: t.amount, payment_type: t.payment_type, raw_description: t.raw_description
   }));
@@ -424,7 +468,7 @@ async function insertTicketsForDay(dayId, tickets) {
 
   const itemRows = [];
   insertedTickets.forEach((row, i) => {
-    tickets[i].items.forEach(it => {
+    pending[i].items.forEach(it => {
       itemRows.push({ ticket_id: row.id, product_id: it.product_id, product_name_raw: it.raw, qty: it.qty });
     });
   });
@@ -432,6 +476,48 @@ async function insertTicketsForDay(dayId, tickets) {
     const { error: iErr } = await supabase.from('ticket_items').insert(itemRows);
     if (iErr) throw new Error('Error guardando productos de los tickets: ' + iErr.message);
   }
+  return { inserted: pending.length, skipped: tickets.length - pending.length };
+}
+
+function normalizedTime(value) {
+  return String(value || '').slice(0, 5);
+}
+
+async function syncGamesForDay(dayId, games, rate) {
+  if (!games.length) return { inserted: 0, updated: 0, unchanged: 0 };
+  const { data: existing, error: readErr } = await supabase.from('games')
+    .select('id,start_time,cars_parked,cars_charged,parking_rate,charges_parking,notes')
+    .eq('sale_day_id', dayId);
+  if (readErr) throw new Error('No pude revisar el estacionamiento existente: ' + readErr.message);
+
+  let inserted = 0, updated = 0, unchanged = 0;
+  for (const game of games) {
+    const payload = {
+      sale_day_id: dayId, start_time: game.hora, cars_parked: game.ap, cars_charged: game.ac,
+      parking_rate: rate, charges_parking: game.cobra, notes: game.nota || null
+    };
+    const current = (existing || []).find(g => normalizedTime(g.start_time) === normalizedTime(game.hora));
+    if (!current) {
+      const { error } = await supabase.from('games').insert(payload);
+      if (error) throw new Error('Error guardando partidos: ' + error.message);
+      inserted++;
+      continue;
+    }
+    const same = Number(current.cars_parked) === game.ap
+      && Number(current.cars_charged) === game.ac
+      && Number(current.parking_rate) === rate
+      && Boolean(current.charges_parking) === game.cobra
+      && (current.notes || '') === (game.nota || '');
+    if (same) { unchanged++; continue; }
+    if (CURRENT_PROFILE?.role !== 'admin') {
+      throw new Error(`Ya existe un partido a las ${game.hora}. Pide a un administrador que actualice sus datos de estacionamiento.`);
+    }
+    const { sale_day_id, ...changes } = payload;
+    const { error } = await supabase.from('games').update(changes).eq('id', current.id);
+    if (error) throw new Error('Error actualizando el partido de las ' + game.hora + ': ' + error.message);
+    updated++;
+  }
+  return { inserted, updated, unchanged };
 }
 
 async function onSubmit(e) {
@@ -469,24 +555,21 @@ async function submitSingleDay(session) {
     status: 'submitted', created_by: session.user.id
   };
   if (event_tags.length) dayPayload.event_tags = event_tags;
-  const { data: day, error: dayErr } = await supabase.from('sale_days').insert(dayPayload).select().single();
-  if (dayErr) {
-    const detail = /event_tags/i.test(dayErr.message)
-      ? 'Falta activar las etiquetas en Supabase con el archivo etiquetas_evento.sql.'
-      : dayErr.message;
-    throw new Error('No pude crear el día (¿ya existe una captura para esa fecha?): ' + detail);
+  let day = await findDayByDate(date);
+  const existingDay = Boolean(day);
+  if (!day) {
+    const { data, error: dayErr } = await supabase.from('sale_days').insert(dayPayload).select().single();
+    if (dayErr) {
+      const detail = /event_tags/i.test(dayErr.message)
+        ? 'Falta activar las etiquetas en Supabase con el archivo etiquetas_evento.sql.'
+        : dayErr.message;
+      throw new Error('No pude crear el día: ' + detail);
+    }
+    day = data;
   }
 
-  if (games.length) {
-    const gamesRows = games.map(g => ({
-      sale_day_id: day.id, start_time: g.hora, cars_parked: g.ap, cars_charged: g.ac,
-      parking_rate: rate, charges_parking: g.cobra, notes: g.nota || null
-    }));
-    const { error: gErr } = await supabase.from('games').insert(gamesRows);
-    if (gErr) throw new Error('Error guardando partidos: ' + gErr.message);
-  }
-
-  await insertTicketsForDay(day.id, PARSED_TICKETS);
+  const gameResult = await syncGamesForDay(day.id, games, rate);
+  const ticketResult = await insertTicketsForDay(day.id, PARSED_TICKETS);
 
   const invRows = [...document.querySelectorAll('.invCount')]
     .filter(inp => inp.value !== '')
@@ -496,7 +579,14 @@ async function submitSingleDay(session) {
     if (invErr) throw new Error('Error guardando conteo de inventario: ' + invErr.message);
   }
 
-  msg('ok', `Día ${date} guardado correctamente.`);
+  const details = [];
+  if (existingDay) details.push('se conservaron las ventas existentes');
+  if (gameResult.inserted) details.push(`${gameResult.inserted} partido(s) agregado(s)`);
+  if (gameResult.updated) details.push(`${gameResult.updated} partido(s) actualizado(s)`);
+  if (gameResult.unchanged) details.push(`${gameResult.unchanged} partido(s) ya estaban iguales`);
+  if (ticketResult.inserted) details.push(`${ticketResult.inserted} ticket(s) nuevo(s)`);
+  if (ticketResult.skipped) details.push(`${ticketResult.skipped} ticket(s) repetido(s) omitido(s)`);
+  msg('ok', `Día ${date} guardado correctamente${details.length ? ': ' + details.join(', ') : ''}.`);
   resetForm();
 }
 
@@ -513,12 +603,17 @@ async function submitMultiDay(session) {
     try {
       const dayPayload = { date, sport, day_type, event_name, status: 'submitted', created_by: session.user.id };
       if (event_tags.length) dayPayload.event_tags = event_tags;
-      const { data: day, error: dayErr } = await supabase.from('sale_days').insert(dayPayload).select().single();
-      if (dayErr) throw new Error(/event_tags/i.test(dayErr.message)
-        ? 'Falta activar las etiquetas en Supabase con el archivo etiquetas_evento.sql.'
-        : dayErr.message);
-      await insertTicketsForDay(day.id, dayData.tickets);
-      results.push({ date, ok: true });
+      let day = await findDayByDate(date);
+      const merged = Boolean(day);
+      if (!day) {
+        const { data, error: dayErr } = await supabase.from('sale_days').insert(dayPayload).select().single();
+        if (dayErr) throw new Error(/event_tags/i.test(dayErr.message)
+          ? 'Falta activar las etiquetas en Supabase con el archivo etiquetas_evento.sql.'
+          : dayErr.message);
+        day = data;
+      }
+      const ticketResult = await insertTicketsForDay(day.id, dayData.tickets);
+      results.push({ date, ok: true, merged, ticketResult });
     } catch (err) {
       results.push({ date, ok: false, error: err.message });
     }
@@ -527,7 +622,7 @@ async function submitMultiDay(session) {
   const failed = results.filter(r => !r.ok);
   let html = `<div class="msg ${failed.length ? 'warn' : 'ok'}"><b>${okCount} de ${results.length} días guardados.</b></div>`;
   if (failed.length) {
-    html += `<div class="msg err">No se pudieron guardar: ${failed.map(f => `${f.date} (${f.error})`).join('; ')}. Es probable que ya existieran — revisa el historial.</div>`;
+    html += `<div class="msg err">No se pudieron guardar: ${failed.map(f => `${f.date} (${f.error})`).join('; ')}.</div>`;
   }
   document.getElementById('msgBox').innerHTML = html;
   if (okCount > 0) resetForm();
@@ -544,6 +639,7 @@ function resetForm() {
   document.getElementById('btnSave').textContent = 'Guardar día';
   PARSED_TICKETS = null;
   PARSED_DAYS = null;
+  checkExistingDate();
 }
 
 async function loadDays(profile) {

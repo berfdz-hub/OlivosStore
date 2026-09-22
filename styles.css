@@ -3,6 +3,7 @@
 :root{
   color-scheme:light;
   --bg:#F4F6F1; --surface:#FFFFFF; --surface-2:#EAF5E7;
+  --row-alt:#F3F8F1; --row-hover:#E4F5DF; --header-soft:#E8F3E5;
   --ink:#171B18; --ink-2:#303832; --muted:#637067; --line:#CDD8CE;
   --brand:#2BE313; --brand-strong:#22B90F; --brand-dark:#176F11; --brand-soft:#DDF8D7;
   --amber:#8A5A06; --amber-soft:#FFF0CF;
@@ -14,7 +15,7 @@
 
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:linear-gradient(180deg,#FBFCF9 0,var(--bg) 260px);color:var(--ink);font:400 15.5px/1.5 'Source Sans 3',system-ui,sans-serif;font-variant-numeric:tabular-nums;min-height:100dvh}
+body{margin:0;background:linear-gradient(180deg,#FFFFFF 0,#F8FAF6 190px,var(--bg) 520px);color:var(--ink);font:400 15.5px/1.5 'Source Sans 3',system-ui,sans-serif;font-variant-numeric:tabular-nums;min-height:100dvh}
 h1,h2,h3{font-family:'Big Shoulders Display',system-ui,sans-serif;font-weight:800;margin:0;text-wrap:balance}
 .mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
 a{color:var(--brand-dark);font-weight:600}
@@ -25,11 +26,11 @@ button, input, select, textarea{font-family:inherit;font-size:15.5px}
 .center-page{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}
 
 /* topbar */
-.topbar{background:rgba(255,255,255,.96);color:var(--ink);padding:9px 0;position:sticky;top:0;z-index:30;border-bottom:3px solid var(--brand);box-shadow:0 4px 18px -16px rgba(23,27,24,.55);backdrop-filter:blur(10px)}
+.topbar{background:rgba(255,255,255,.97);color:var(--ink);padding:10px 0;position:sticky;top:0;z-index:30;border-bottom:1px solid #BFDDB9;box-shadow:0 8px 24px -22px rgba(23,27,24,.55);backdrop-filter:blur(10px)}
 .topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .topbar .brand{display:flex;align-items:center;gap:9px;font-family:'Big Shoulders Display';font-weight:800;font-size:21px;color:var(--ink);letter-spacing:.02em}
 .topbar .brand .dot{display:none}
-.brand-mark{width:38px;height:38px;border-radius:9px;display:block;object-fit:cover;box-shadow:0 0 0 1px var(--line)}
+.brand-mark{width:42px;height:42px;border-radius:11px;display:block;object-fit:cover;box-shadow:0 0 0 1px #B9DAB3,0 7px 18px -14px rgba(23,27,24,.55)}
 .topbar .who{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink-2)}
 .role-pill{font:700 10.5px/1 'IBM Plex Mono';letter-spacing:.04em;text-transform:uppercase;padding:5px 8px;border-radius:6px;background:var(--brand-soft);color:var(--brand-dark);border:1px solid #B9EFB0}
 .role-pill.admin{background:var(--amber-soft);color:var(--amber);border-color:#E8C77E}
@@ -37,10 +38,10 @@ button, input, select, textarea{font-family:inherit;font-size:15.5px}
 .btn-ghost:hover{background:var(--brand-soft);border-color:var(--brand-strong)}
 
 /* section nav (tabs across top of dashboards) */
-.tabbar{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);background:rgba(255,255,255,.97);position:sticky;top:59px;z-index:20;scrollbar-width:none}
+.tabbar{display:flex;gap:4px;overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.97);position:sticky;top:66px;z-index:20;scrollbar-width:none;padding:4px;box-shadow:0 8px 24px -24px rgba(23,27,24,.45)}
 .tabbar::-webkit-scrollbar{display:none}
-.tabbar button{flex:0 0 auto;background:none;border:none;padding:13px 16px;font:600 13.5px 'Source Sans 3';color:var(--muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
-.tabbar button.on{color:var(--brand-dark);border-bottom-color:var(--brand);background:var(--brand-soft)}
+.tabbar button{flex:0 0 auto;background:none;border:1px solid transparent;padding:10px 14px;font:650 13.5px 'Source Sans 3';color:var(--muted);border-radius:7px;cursor:pointer;white-space:nowrap}
+.tabbar button.on{color:var(--brand-dark);border-color:#B9E6B1;background:var(--brand-soft)}
 .tabbar button:hover{color:var(--ink)}
 
 main{padding:24px 0 60px}
@@ -48,8 +49,9 @@ main{padding:24px 0 60px}
 .pane.on{display:block}
 
 /* cards */
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.card{background:rgba(255,255,255,.98);border:1px solid #D5DED5;border-radius:14px;padding:22px;box-shadow:0 1px 2px rgba(23,27,24,.035),0 16px 38px -34px rgba(23,27,24,.34)}
 .card + .card{margin-top:16px}
+.card > h3:first-child{color:var(--ink);letter-spacing:.01em}
 .grid{display:grid;gap:14px}
 .grid2{grid-template-columns:1fr 1fr}
 .grid3{grid-template-columns:repeat(3,1fr)}
@@ -68,7 +70,7 @@ label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-b
 input[type=text], input[type=email], input[type=password], input[type=number],
 input[type=date], input[type=time], input[type=file], select, textarea{
   width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:7px;
-  background:var(--surface);color:var(--ink);
+  background:#FCFDFB;color:var(--ink);
 }
 input:focus, select:focus, textarea:focus{outline:3px solid #A8F09D;outline-offset:1px;border-color:var(--brand-strong)}
 textarea{resize:vertical;min-height:70px}
@@ -90,12 +92,18 @@ button.btn.danger.sec{background:var(--surface);color:var(--clay);border-color:v
 .check-group.compact .check-option{padding:4px 7px;font-size:11.5px}
 
 /* tables */
-.scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:13.5px}
-th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}
+.scroll{overflow-x:auto;border:1px solid #D8E1D8;border-radius:10px;background:var(--surface)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13.5px}
+th,td{padding:11px 12px;text-align:right;border-bottom:1px solid #DCE5DC;vertical-align:middle}
 th:first-child,td:first-child{text-align:left}
-thead th{font:600 10.5px 'IBM Plex Mono';color:var(--muted);text-transform:uppercase;letter-spacing:.03em;border-bottom:1.5px solid var(--ink)}
-tbody tr:hover{background:var(--surface-2)}
+thead th{font:600 10.5px 'IBM Plex Mono';color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid #BFD1BD;background:var(--header-soft);position:sticky;top:0;z-index:2}
+thead th:first-child{border-top-left-radius:9px}
+thead th:last-child{border-top-right-radius:9px}
+tbody tr:nth-child(even) td{background:var(--row-alt)}
+tbody tr:hover td{background:var(--row-hover)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:last-child td:first-child{border-bottom-left-radius:9px}
+tbody tr:last-child td:last-child{border-bottom-right-radius:9px}
 td.num{font-family:'IBM Plex Mono'}
 .pos{color:var(--brand-dark);font-weight:700}
 .neg{color:var(--clay);font-weight:600}
@@ -141,6 +149,7 @@ td.num{font-family:'IBM Plex Mono'}
 .msg.err{background:var(--clay-soft);color:var(--clay);border-left:3px solid var(--clay)}
 .msg.ok{background:var(--brand-soft);color:var(--brand-dark);border-left:3px solid var(--brand-strong)}
 .msg.warn{background:var(--amber-soft);color:var(--amber);border-left:3px solid var(--amber)}
+.msg.info{background:var(--blue-soft);color:var(--blue);border-left:3px solid var(--blue)}
 
 /* dia con venta fuerte detectada automaticamente (captura multi-dia) */
 tr.row-flag td{background:var(--amber-soft)}
