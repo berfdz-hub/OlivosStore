@@ -105,7 +105,14 @@
 
     <div class="card" id="cardInv">
       <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:4px">Conteo físico de inventario (opcional)</h3>
-      <p class="footnote" style="margin-bottom:12px">Solo llena los productos que sí contaste al cierre. Los demás se dejan vacíos.</p>
+      <p class="footnote" style="margin-bottom:12px">Puedes importar las existencias actuales de Loyverse o capturarlas manualmente. Los recibos de venta no contienen inventario.</p>
+      <div style="border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px;background:var(--surface-2)">
+        <label style="margin-bottom:6px">Importar existencias de Loyverse</label>
+        <p class="footnote" style="margin-bottom:10px">En Loyverse abre <b>Back Office → Lista de artículos → Exportar</b>. Sube aquí ese CSV; no uses el archivo de recibos.</p>
+        <input type="file" id="fInventoryCsv" accept=".csv,text/csv">
+        <div id="inventoryCsvSummary"></div>
+      </div>
+      <p class="footnote" style="margin-bottom:12px">Revisa las cantidades importadas o llena solamente los productos que contaste. Los demás se dejan vacíos.</p>
       <div class="scroll">
         <table id="tblInv"><thead><tr><th>Producto</th><th style="width:140px">Conteo físico</th></tr></thead><tbody></tbody></table>
       </div>
@@ -168,13 +175,14 @@
 <script type="module">
 import { supabase } from "./lib/supabase-client.js";
 import { requireRole, signOut, getCurrentProfile } from "./lib/auth.js";
-import { parseReceipts } from "./lib/csv.js";
+import { parseReceipts, parseInventory } from "./lib/csv.js";
 
 window.doLogout = signOut;
 
 let CATALOG = [];
 let PARSED_TICKETS = null;
 let PARSED_DAYS = null; // [{date, tickets:[], venta}] cuando el CSV trae mas de un dia
+let PARSED_INVENTORY = null;
 let CURRENT_PROFILE = null;
 
 function checkedTags(root) {
@@ -280,6 +288,7 @@ async function init() {
   `).join('');
 
   document.getElementById('fCsv').addEventListener('change', onCsvChange);
+  document.getElementById('fInventoryCsv').addEventListener('change', onInventoryCsvChange);
   document.getElementById('formDay').addEventListener('submit', onSubmit);
   wireApplyAll();
 
@@ -392,6 +401,32 @@ function onCsvChange(e) {
     }
   };
   reader.readAsText(f, 'UTF-8');
+}
+
+function onInventoryCsvChange(e) {
+  const file = e.target.files[0];
+  const summary = document.getElementById('inventoryCsvSummary');
+  if (!file) { PARSED_INVENTORY = null; summary.innerHTML = ''; return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const result = parseInventory(reader.result, CATALOG);
+      PARSED_INVENTORY = result.counts;
+      document.querySelectorAll('.invCount').forEach(input => { input.value = ''; });
+      result.counts.forEach(count => {
+        const input = document.querySelector(`.invCount[data-pid="${count.product_id}"]`);
+        if (input) input.value = count.physical_count;
+      });
+      let html = `<div class="msg ok"><b>${result.counts.length} producto(s) con existencia importada.</b> Fuente: ${result.stockColumns.join(', ')}.</div>`;
+      if (result.unmatched.length) html += `<div class="msg warn"><b>${result.unmatched.length} producto(s) no coincidieron con el catálogo:</b> ${result.unmatched.join(', ')}.</div>`;
+      if (result.withoutStock) html += `<div class="msg info">${result.withoutStock} renglón(es) no tenían una cantidad de inventario y se dejaron sin dato.</div>`;
+      summary.innerHTML = html;
+    } catch (err) {
+      PARSED_INVENTORY = null;
+      summary.innerHTML = `<div class="msg err">${err.message}</div>`;
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
 }
 
 function flagStrongSaleDays(days) {
@@ -520,6 +555,33 @@ async function syncGamesForDay(dayId, games, rate) {
   return { inserted, updated, unchanged };
 }
 
+async function syncInventoryForDay(dayId, rows) {
+  if (!rows.length) return { inserted: 0, updated: 0, unchanged: 0 };
+  const { data: existing, error: readErr } = await supabase.from('inventory_counts')
+    .select('id,product_id,physical_count')
+    .eq('sale_day_id', dayId);
+  if (readErr) throw new Error('No pude revisar el inventario existente: ' + readErr.message);
+
+  const byProduct = new Map((existing || []).map(row => [row.product_id, row]));
+  const inserts = [];
+  let updated = 0, unchanged = 0;
+  for (const row of rows) {
+    const current = byProduct.get(row.product_id);
+    if (!current) { inserts.push(row); continue; }
+    if (Number(current.physical_count) === Number(row.physical_count)) { unchanged++; continue; }
+    const { error } = await supabase.from('inventory_counts')
+      .update({ physical_count: row.physical_count })
+      .eq('id', current.id);
+    if (error) throw new Error('No pude actualizar un conteo existente. Un administrador debe corregir inventarios ya guardados: ' + error.message);
+    updated++;
+  }
+  if (inserts.length) {
+    const { error } = await supabase.from('inventory_counts').insert(inserts);
+    if (error) throw new Error('Error guardando conteo de inventario: ' + error.message);
+  }
+  return { inserted: inserts.length, updated, unchanged };
+}
+
 async function onSubmit(e) {
   e.preventDefault();
   const btn = document.getElementById('btnSave');
@@ -574,10 +636,7 @@ async function submitSingleDay(session) {
   const invRows = [...document.querySelectorAll('.invCount')]
     .filter(inp => inp.value !== '')
     .map(inp => ({ sale_day_id: day.id, product_id: inp.dataset.pid, physical_count: parseInt(inp.value) }));
-  if (invRows.length) {
-    const { error: invErr } = await supabase.from('inventory_counts').insert(invRows);
-    if (invErr) throw new Error('Error guardando conteo de inventario: ' + invErr.message);
-  }
+  const inventoryResult = await syncInventoryForDay(day.id, invRows);
 
   const details = [];
   if (existingDay) details.push('se conservaron las ventas existentes');
@@ -586,6 +645,9 @@ async function submitSingleDay(session) {
   if (gameResult.unchanged) details.push(`${gameResult.unchanged} partido(s) ya estaban iguales`);
   if (ticketResult.inserted) details.push(`${ticketResult.inserted} ticket(s) nuevo(s)`);
   if (ticketResult.skipped) details.push(`${ticketResult.skipped} ticket(s) repetido(s) omitido(s)`);
+  if (inventoryResult.inserted) details.push(`${inventoryResult.inserted} existencia(s) importada(s)`);
+  if (inventoryResult.updated) details.push(`${inventoryResult.updated} existencia(s) actualizada(s)`);
+  if (inventoryResult.unchanged) details.push(`${inventoryResult.unchanged} existencia(s) ya estaban iguales`);
   msg('ok', `Día ${date} guardado correctamente${details.length ? ': ' + details.join(', ') : ''}.`);
   resetForm();
 }
@@ -634,11 +696,13 @@ function resetForm() {
   updateDayLabel();
   document.getElementById('games').innerHTML = ''; addGame();
   document.getElementById('csvSummary').innerHTML = '';
+  document.getElementById('inventoryCsvSummary').innerHTML = '';
   document.getElementById('cardMultiDay').classList.add('hide');
   document.getElementById('cardInv').classList.remove('hide');
   document.getElementById('btnSave').textContent = 'Guardar día';
   PARSED_TICKETS = null;
   PARSED_DAYS = null;
+  PARSED_INVENTORY = null;
   checkExistingDate();
 }
 
