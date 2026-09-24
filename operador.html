@@ -259,6 +259,21 @@ function updateDayLabel() {
 function msg(type, html) { document.getElementById('msgBox').innerHTML = `<div class="msg ${type}">${html}</div>`; }
 const money = n => '$' + Number(n).toLocaleString('es-MX', { maximumFractionDigits: 0 });
 
+function renderInventoryInputs() {
+  const previous = new Map([...document.querySelectorAll('.invCount')].map(input => [input.dataset.pid, input.value]));
+  document.querySelector('#tblInv tbody').innerHTML = CATALOG.map(product => `
+    <tr><td>${product.name}</td><td><input type="number" min="0" class="invCount" data-pid="${product.id}" value="${previous.get(product.id) || ''}" style="width:110px"></td></tr>
+  `).join('');
+}
+
+async function reloadCatalog() {
+  const { data, error } = await supabase
+    .from('products_view').select('id, name, category, sell_price').eq('active', true).order('name');
+  if (error) throw new Error('No pude cargar el catálogo de productos: ' + error.message);
+  CATALOG = data || [];
+  renderInventoryInputs();
+}
+
 async function init() {
   const profile = await requireRole(['operador', 'admin']);
   if (!profile) return;
@@ -277,15 +292,8 @@ async function init() {
     checkExistingDate();
   });
 
-  const { data: products, error } = await supabase
-    .from('products_view').select('id, name, category, sell_price').eq('active', true).order('name');
-  if (error) { msg('err', 'No pude cargar el catálogo de productos: ' + error.message); return; }
-  CATALOG = products;
-
-  const tbody = document.querySelector('#tblInv tbody');
-  tbody.innerHTML = CATALOG.map(p => `
-    <tr><td>${p.name}</td><td><input type="number" min="0" class="invCount" data-pid="${p.id}" style="width:110px"></td></tr>
-  `).join('');
+  try { await reloadCatalog(); }
+  catch (error) { msg('err', error.message); return; }
 
   document.getElementById('fCsv').addEventListener('change', onCsvChange);
   document.getElementById('fInventoryCsv').addEventListener('change', onInventoryCsvChange);
@@ -344,20 +352,60 @@ async function showWeekendNotice() {
   }
 }
 
+async function registerImportedProducts(products) {
+  const linked = [], failed = [];
+  for (const product of products) {
+    if (product.sell_price == null) {
+      failed.push(`${product.name} (el archivo no trae precio unitario)`);
+      continue;
+    }
+    const params = {
+      p_name: product.name,
+      p_category: product.category || 'Otro',
+      p_sell_price: product.sell_price,
+      p_cost_price: product.cost_price
+    };
+    let { error } = await supabase.rpc('register_imported_product', params);
+    if (error && CURRENT_PROFILE?.role === 'admin') {
+      const direct = await supabase.from('products').insert({
+        name: product.name, category: product.category || 'Otro', sell_price: product.sell_price,
+        cost_price: product.cost_price, active: true
+      });
+      error = direct.error;
+    }
+    if (error) failed.push(`${product.name} (${error.message})`);
+    else linked.push(product.name);
+  }
+  if (linked.length) await reloadCatalog();
+  return { linked, failed };
+}
+
 function onCsvChange(e) {
   const f = e.target.files[0];
   if (!f) return;
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
-      const { tickets, unmatched, descartados } = parseReceipts(reader.result, CATALOG);
+      let parsed = parseReceipts(reader.result, CATALOG);
+      let registration = { linked: [], failed: [] };
+      if (parsed.productsToCreate?.length) {
+        registration = await registerImportedProducts(parsed.productsToCreate);
+        if (registration.linked.length) parsed = parseReceipts(reader.result, CATALOG);
+      }
+      const { tickets, unmatched, descartados } = parsed;
       PARSED_TICKETS = tickets;
       const venta = tickets.reduce((s, t) => s + t.amount, 0);
       let html = `<div class="msg ok"><b>${tickets.length}</b> tickets leídos, venta total <b>${money(venta)}</b>.`;
       if (descartados) html += ` (${descartados} filas descartadas: reembolsos o sin fecha legible)`;
       html += `</div>`;
+      if (registration.linked.length) {
+        html += `<div class="msg ok"><b>${registration.linked.length} producto(s) nuevo(s) registrado(s) automáticamente:</b> ${registration.linked.join(', ')}.</div>`;
+      }
       if (unmatched.length) {
-        html += `<div class="msg warn"><b>${unmatched.length} producto(s) no están en el catálogo</b> — se guardan igual pero sin costo asociado. Avísale al admin para agregarlos:<br>${unmatched.join(', ')}</div>`;
+        html += `<div class="msg warn"><b>${unmatched.length} producto(s) no pudieron vincularse al catálogo.</b> Se conservarán en el ticket, pero necesitan revisión:<br>${unmatched.join(', ')}</div>`;
+      }
+      if (registration.failed.length) {
+        html += `<div class="msg err"><b>No pude registrar automáticamente:</b> ${registration.failed.join('; ')}. Si eres operador, el administrador debe ejecutar permitir_registrar_productos_importados.sql una sola vez.</div>`;
       }
 
       const byDate = new Map();
