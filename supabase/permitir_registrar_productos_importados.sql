@@ -51,6 +51,12 @@ begin
     returning id into v_product_id;
   end if;
 
+  -- Repara ventas ya importadas antes de que el producto existiera.
+  update public.ticket_items
+  set product_id = v_product_id
+  where product_id is null
+    and lower(trim(product_name_raw)) = lower(v_name);
+
   return v_product_id;
 end;
 $$;

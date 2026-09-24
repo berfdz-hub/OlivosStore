@@ -370,8 +370,15 @@ async function registerImportedProducts(products) {
       const direct = await supabase.from('products').insert({
         name: product.name, category: product.category || 'Otro', sell_price: product.sell_price,
         cost_price: product.cost_price, active: true
-      });
+      }).select('id').single();
       error = direct.error;
+      if (!error && direct.data?.id) {
+        const repair = await supabase.from('ticket_items')
+          .update({ product_id: direct.data.id })
+          .is('product_id', null)
+          .eq('product_name_raw', product.name);
+        if (repair.error) error = repair.error;
+      }
     }
     if (error) failed.push(`${product.name} (${error.message})`);
     else linked.push(product.name);
