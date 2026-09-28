@@ -185,6 +185,13 @@ let PARSED_DAYS = null; // [{date, tickets:[], venta}] cuando el CSV trae mas de
 let PARSED_INVENTORY = null;
 let CURRENT_PROFILE = null;
 
+function localISODate(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function checkedTags(root) {
   return [...root.querySelectorAll('input[type="checkbox"]:checked')].map(input => input.value);
 }
@@ -284,7 +291,7 @@ async function init() {
     pill.textContent = 'ADMIN'; pill.classList.add('admin');
   }
 
-  document.getElementById('fDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('fDate').value = localISODate();
   addGame();
   updateDayLabel();
   document.getElementById('fDate').addEventListener('change', () => {
@@ -331,12 +338,11 @@ async function checkExistingDate() {
 
 async function showWeekendNotice() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const iso = d => d.toISOString().slice(0, 10);
   const dow = today.getDay();
   const satOffset = dow === 6 ? 0 : (dow === 0 ? -1 : 6 - dow);
   const sat = new Date(today); sat.setDate(today.getDate() + satOffset);
   const sun = new Date(sat); sun.setDate(sat.getDate() + 1);
-  const satISO = iso(sat), sunISO = iso(sun);
+  const satISO = localISODate(sat), sunISO = localISODate(sun);
 
   const { data, error } = await supabase.from('scheduled_games')
     .select('date, start_time, sport, notes').in('date', [satISO, sunISO]).order('start_time');
@@ -417,7 +423,9 @@ function onCsvChange(e) {
 
       const byDate = new Map();
       tickets.forEach(t => {
-        const d = t.ts.slice(0, 10);
+        // Conserva la fecha comercial escrita por Loyverse. Cortar el ISO en
+        // UTC movía al día siguiente las ventas nocturnas de México.
+        const d = t.sale_date || localISODate(new Date(t.ts));
         if (!byDate.has(d)) byDate.set(d, []);
         byDate.get(d).push(t);
       });
@@ -549,14 +557,47 @@ function ticketIdentity(ticket) {
 }
 
 async function insertTicketsForDay(dayId, tickets) {
-  if (!tickets || !tickets.length) return { inserted: 0, skipped: 0 };
+  if (!tickets || !tickets.length) return { inserted: 0, skipped: 0, moved: 0, misplaced: 0 };
   const { data: existing, error: readErr } = await supabase.from('tickets')
     .select('ticket_number,ts')
     .eq('sale_day_id', dayId);
   if (readErr) throw new Error('No pude revisar los tickets existentes: ' + readErr.message);
   const existingKeys = new Set((existing || []).map(ticketIdentity));
-  const pending = tickets.filter(t => !existingKeys.has(ticketIdentity(t)));
-  if (!pending.length) return { inserted: 0, skipped: tickets.length };
+  const candidates = tickets.filter(t => !existingKeys.has(ticketIdentity(t)));
+  if (!candidates.length) return { inserted: 0, skipped: tickets.length, moved: 0, misplaced: 0 };
+
+  // También busca el mismo ticket en otros días. Esto repara importaciones
+  // antiguas donde una venta nocturna se guardó al día siguiente por UTC.
+  const globalMatches = [];
+  const timestamps = [...new Set(candidates.map(ticket => ticket.ts))];
+  for (let i = 0; i < timestamps.length; i += 100) {
+    const { data, error } = await supabase.from('tickets')
+      .select('id,sale_day_id,ticket_number,ts')
+      .in('ts', timestamps.slice(i, i + 100));
+    if (error) throw new Error('No pude revisar tickets en otras fechas: ' + error.message);
+    globalMatches.push(...(data || []));
+  }
+  const byIdentity = new Map();
+  globalMatches.forEach(ticket => {
+    const key = ticketIdentity(ticket);
+    if (!byIdentity.has(key)) byIdentity.set(key, []);
+    byIdentity.get(key).push(ticket);
+  });
+
+  const pending = [];
+  let moved = 0, misplaced = 0;
+  for (const ticket of candidates) {
+    const elsewhere = (byIdentity.get(ticketIdentity(ticket)) || []).find(row => row.sale_day_id !== dayId);
+    if (!elsewhere) { pending.push(ticket); continue; }
+    if (CURRENT_PROFILE?.role === 'admin') {
+      const { error } = await supabase.from('tickets').update({ sale_day_id: dayId }).eq('id', elsewhere.id);
+      if (error) throw new Error('No pude corregir la fecha de un ticket existente: ' + error.message);
+      moved++;
+    } else {
+      misplaced++;
+    }
+  }
+  if (!pending.length) return { inserted: 0, skipped: tickets.length - moved - misplaced, moved, misplaced };
 
   const ticketRows = pending.map(t => ({
     sale_day_id: dayId, ticket_number: t.ticket_number, ts: t.ts,
@@ -575,7 +616,7 @@ async function insertTicketsForDay(dayId, tickets) {
     const { error: iErr } = await supabase.from('ticket_items').insert(itemRows);
     if (iErr) throw new Error('Error guardando productos de los tickets: ' + iErr.message);
   }
-  return { inserted: pending.length, skipped: tickets.length - pending.length };
+  return { inserted: pending.length, skipped: tickets.length - pending.length - moved - misplaced, moved, misplaced };
 }
 
 function normalizedTime(value) {
@@ -709,6 +750,8 @@ async function submitSingleDay(session) {
   if (gameResult.unchanged) details.push(`${gameResult.unchanged} partido(s) ya estaban iguales`);
   if (ticketResult.inserted) details.push(`${ticketResult.inserted} ticket(s) nuevo(s)`);
   if (ticketResult.skipped) details.push(`${ticketResult.skipped} ticket(s) repetido(s) omitido(s)`);
+  if (ticketResult.moved) details.push(`${ticketResult.moved} ticket(s) corregido(s) desde una fecha equivocada`);
+  if (ticketResult.misplaced) details.push(`${ticketResult.misplaced} ticket(s) ya existen en otra fecha; un administrador debe corregirlos`);
   if (inventoryResult.inserted) details.push(`${inventoryResult.inserted} existencia(s) importada(s)`);
   if (inventoryResult.updated) details.push(`${inventoryResult.updated} existencia(s) actualizada(s)`);
   if (inventoryResult.unchanged) details.push(`${inventoryResult.unchanged} existencia(s) ya estaban iguales`);
@@ -756,7 +799,7 @@ async function submitMultiDay(session) {
 
 function resetForm() {
   document.getElementById('formDay').reset();
-  document.getElementById('fDate').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('fDate').value = localISODate();
   updateDayLabel();
   document.getElementById('games').innerHTML = ''; addGame();
   document.getElementById('csvSummary').innerHTML = '';

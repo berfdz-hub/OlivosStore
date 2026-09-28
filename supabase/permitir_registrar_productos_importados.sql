@@ -21,7 +21,7 @@ begin
     raise exception 'Debes iniciar sesión';
   end if;
 
-  select role into v_role from public.profiles where id = auth.uid();
+  select role into v_role from public.profiles where id = auth.uid() and active = true;
   if v_role not in ('admin', 'operador') then
     raise exception 'Rol sin permiso para importar productos';
   end if;
