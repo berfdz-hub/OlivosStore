@@ -327,7 +327,12 @@
   </div>
 
   <div class="pane" id="pane-inventario">
-    <h2 class="section-title" style="margin-top:20px">Variación de inventario</h2>
+    <h2 class="section-title" style="margin-top:20px">Inventario actual estimado</h2>
+    <p class="footnote" style="margin-top:6px">Existencia actual = último conteo importado − unidades vendidas después. Para validar el sistema, captura físicamente 3 o 4 productos en la columna de comprobación; la diferencia se calcula al instante y no modifica la base de datos.</p>
+    <div class="card" style="margin-top:14px">
+      <div class="scroll"><table id="tblCurrentStock"><thead><tr><th>Producto</th><th>Último conteo</th><th class="num">Cantidad contada</th><th class="num">Ventas posteriores</th><th class="num">Existencia estimada</th><th class="num">Comprobación física</th><th class="num">Diferencia</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <h2 class="section-title" style="margin-top:28px">Historial de variaciones</h2>
     <p class="footnote" style="margin-top:6px">Solo aparecen productos con conteo físico capturado en el periodo. Teórico = inventario inicial − vendido.</p>
     <div id="invMsg"></div>
     <div class="card" style="margin-top:14px">
@@ -555,6 +560,7 @@ async function init() {
   if (IS_ADMIN) { await loadCatalogFull(); await loadUsers(); }
   await loadScheduledGames();
   await loadPredictionData();
+  renderAll();
   renderPrediction();
 }
 
@@ -721,23 +727,43 @@ function productUnits(items = ITEMS) {
   return [...agg.values()].sort((a, b) => b.qty - a.qty);
 }
 
-function purchaseRowsFor(days, items, invCounts, coverage = 7) {
+function currentInventoryByProduct() {
+  const hasFullHistory = PRED_DAYS.length > 0;
+  const sourceDays = hasFullHistory ? PRED_DAYS : ALL_DAYS;
+  const sourceTickets = hasFullHistory ? PRED_TICKETS : ALL_TICKETS;
+  const sourceItems = hasFullHistory ? PRED_ITEMS : ALL_ITEMS;
+  const sourceInv = hasFullHistory ? PRED_INV : ALL_INV;
+  const dayById = new Map(sourceDays.map(day => [day.id, day]));
+  const ticketById = new Map(sourceTickets.map(ticket => [ticket.id, ticket]));
+  const latest = new Map();
+
+  sourceInv.forEach(count => {
+    if (!count.product_id) return;
+    const day = dayById.get(count.sale_day_id);
+    const value = count.physical_count != null ? Number(count.physical_count)
+      : (count.opening_stock != null && count.sold != null ? Number(count.opening_stock) - Number(count.sold) : null);
+    if (!day || value == null) return;
+    const previous = latest.get(count.product_id);
+    if (!previous || day.date > previous.date) latest.set(count.product_id, { date: day.date, counted: value, soldAfter: 0, value });
+  });
+
+  sourceItems.forEach(item => {
+    const current = latest.get(item.product_id);
+    if (!current) return;
+    const ticket = ticketById.get(item.ticket_id);
+    const saleDay = ticket ? dayById.get(ticket.sale_day_id) : null;
+    if (saleDay && saleDay.date > current.date) current.soldAfter += Number(item.qty || 0);
+  });
+  latest.forEach(current => { current.value = Math.max(0, current.counted - current.soldAfter); });
+  return latest;
+}
+
+function purchaseRowsFor(days, items, coverage = 7) {
   const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
   const consumo = new Map();
   items.forEach(it => { if (it.product_id) consumo.set(it.product_id, (consumo.get(it.product_id) || 0) + Number(it.qty || 0)); });
   const nDias = days.length || 1;
-  const dayById = new Map(days.map(d => [d.id, d]));
-  const latest = new Map();
-  invCounts.forEach(c => {
-    if (!c.product_id) return;
-    const day = dayById.get(c.sale_day_id);
-    if (!day) return;
-    const value = c.physical_count != null ? Number(c.physical_count)
-      : (c.opening_stock != null && c.sold != null ? Number(c.opening_stock) - Number(c.sold) : null);
-    if (value == null) return;
-    const previous = latest.get(c.product_id);
-    if (!previous || day.date > previous.date) latest.set(c.product_id, { date: day.date, value });
-  });
+  const latest = currentInventoryByProduct();
   return [...consumo.keys()].map(pid => {
     const p = prodById.get(pid);
     const unitsPerDay = consumo.get(pid) / nDias;
@@ -752,7 +778,7 @@ function renderOperationalView() {
   const sales = TICKETS.reduce((sum, ticket) => sum + Number(ticket.amount || 0), 0);
   const units = ITEMS.reduce((sum, item) => sum + Number(item.qty || 0), 0);
   const top = productUnits()[0];
-  const purchaseRows = purchaseRowsFor(DAYS, ITEMS, INV_COUNTS, 7);
+  const purchaseRows = purchaseRowsFor(DAYS, ITEMS, 7);
   const toBuy = purchaseRows.filter(row => Number(row.suggested) > 0);
   document.getElementById('opsKpis').innerHTML = [
     ['Venta del periodo', money(sales)], ['Tickets', TICKETS.length],
@@ -792,7 +818,7 @@ function renderGuidedView() {
   const best = [...sports].sort((a, b) => b.average - a.average)[0];
   const top = productUnits()[0];
   const sales = TICKETS.reduce((sum, ticket) => sum + Number(ticket.amount || 0), 0);
-  const purchaseRows = purchaseRowsFor(DAYS, ITEMS, INV_COUNTS, 7);
+  const purchaseRows = purchaseRowsFor(DAYS, ITEMS, 7);
   const toBuy = purchaseRows.filter(row => Number(row.suggested) > 0);
   const noCost = productUnits().filter(row => PRODUCTS.find(p => p.id === row.id)?.cost_price == null);
 
@@ -1053,6 +1079,22 @@ function renderCombos() {
 
 function renderInventario() {
   const prodById = new Map(PRODUCTS.map(p => [p.id, p]));
+  const current = currentInventoryByProduct();
+  const currentRows = [...current.entries()].map(([productId, stock]) => ({
+    productId, producto: prodById.get(productId)?.name || '?', ...stock
+  })).sort((a, b) => a.producto.localeCompare(b.producto, 'es'));
+  document.querySelector('#tblCurrentStock tbody').innerHTML = currentRows.map(row => `
+    <tr><td>${row.producto}</td><td>${row.date}</td><td class="num">${row.counted}</td><td class="num">${row.soldAfter}</td>
+      <td class="num"><b>${row.value}</b></td><td class="num"><input type="number" min="0" class="verifyStock" data-estimated="${row.value}" style="width:92px"></td>
+      <td class="num verifyDiff">—</td></tr>
+  `).join('') || '<tr><td colspan="7">Todavía no hay conteos de inventario importados.</td></tr>';
+  document.querySelectorAll('.verifyStock').forEach(input => input.addEventListener('input', () => {
+    const cell = input.closest('tr').querySelector('.verifyDiff');
+    if (input.value === '') { cell.textContent = '—'; cell.className = 'num verifyDiff'; return; }
+    const diff = Number(input.value) - Number(input.dataset.estimated);
+    cell.textContent = diff > 0 ? `+${diff}` : String(diff);
+    cell.className = `num verifyDiff ${diff === 0 ? 'pos' : 'neg'}`;
+  }));
   const dayById = new Map(DAYS.map(d => [d.id, d]));
   const rows = INV_COUNTS.filter(c => c.physical_count != null).map(c => {
     const p = prodById.get(c.product_id);
@@ -1470,7 +1512,7 @@ function renderCompras() {
   const el = document.getElementById('coberturaDias');
   if (!el) return;
   const cobertura = parseInt(el.value) || 7;
-  const rows = purchaseRowsFor(DAYS, ITEMS, INV_COUNTS, cobertura);
+  const rows = purchaseRowsFor(DAYS, ITEMS, cobertura);
 
   document.querySelector('#tblCompras tbody').innerHTML = rows.map(r => `
     <tr><td>${r.name}</td><td class="num">${r.unitsPerDay.toFixed(1)}</td>
