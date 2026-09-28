@@ -463,9 +463,16 @@ function onInventoryCsvChange(e) {
   const summary = document.getElementById('inventoryCsvSummary');
   if (!file) { PARSED_INVENTORY = null; summary.innerHTML = ''; return; }
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
-      const result = parseInventory(reader.result, CATALOG);
+      // Otra persona pudo haber agregado el producto desde ventas en otra sesión.
+      await reloadCatalog();
+      let result = parseInventory(reader.result, CATALOG);
+      let registration = { linked: [], failed: [] };
+      if (result.productsToCreate?.length) {
+        registration = await registerImportedProducts(result.productsToCreate);
+        if (registration.linked.length) result = parseInventory(reader.result, CATALOG);
+      }
       PARSED_INVENTORY = result.counts;
       document.querySelectorAll('.invCount').forEach(input => { input.value = ''; });
       result.counts.forEach(count => {
@@ -473,7 +480,9 @@ function onInventoryCsvChange(e) {
         if (input) input.value = count.physical_count;
       });
       let html = `<div class="msg ok"><b>${result.counts.length} producto(s) con existencia importada.</b> Fuente: ${result.stockColumns.join(', ')}.</div>`;
-      if (result.unmatched.length) html += `<div class="msg warn"><b>${result.unmatched.length} producto(s) no coincidieron con el catálogo:</b> ${result.unmatched.join(', ')}.</div>`;
+      if (registration.linked.length) html += `<div class="msg ok"><b>${registration.linked.length} producto(s) nuevo(s) registrado(s) desde el inventario:</b> ${registration.linked.join(', ')}.</div>`;
+      if (result.unmatched.length) html += `<div class="msg warn"><b>${result.unmatched.length} producto(s) no pudieron vincularse al catálogo:</b> ${result.unmatched.join(', ')}.</div>`;
+      if (registration.failed.length) html += `<div class="msg err"><b>No pude registrar automáticamente:</b> ${registration.failed.join('; ')}.</div>`;
       if (result.withoutStock) html += `<div class="msg info">${result.withoutStock} renglón(es) no tenían una cantidad de inventario y se dejaron sin dato.</div>`;
       summary.innerHTML = html;
     } catch (err) {

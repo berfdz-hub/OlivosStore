@@ -49,6 +49,14 @@ begin
       true
     )
     returning id into v_product_id;
+  else
+    update public.products
+    set active = true,
+        category = coalesce(nullif(trim(p_category), ''), category),
+        sell_price = p_sell_price,
+        cost_price = case when p_cost_price is not null and p_cost_price > 0 then p_cost_price else cost_price end,
+        updated_at = now()
+    where id = v_product_id;
   end if;
 
   -- Repara ventas ya importadas antes de que el producto existiera.
