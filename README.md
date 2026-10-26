@@ -24,7 +24,7 @@ Las pruebas SQL usan PostgreSQL embebido (PGlite), con roles anónimo, operador,
 4. Aplicar `supabase/migrations/2026102001_planning_corrections.sql`. Agrega solicitudes, decisiones, propuestas de compra inmutables y límites por producto. Los productos de categoría «Comida preparada» quedan marcados como perecederos; revisar el resto del catálogo y asignar cupos antes de usar las sugerencias de comida.
 5. Aplicar `supabase/migrations/2026102101_guided_planning.sql`. Permite propuestas con tipo y partidos desconocidos, conserva las respuestas del asistente y acepta el modelo v2. No cambia propuestas anteriores.
 6. En Authentication desactivar el registro público. El administrador invita a las personas autorizadas y activa sus perfiles. Verificar que la URL de recuperación `https://olivos-store.vercel.app/index.html?recover=1` esté permitida.
-7. Verificar anónimo sin lectura ni escritura, operador activo limitado al alcance acordado, operador desactivado sin acceso y administrador con acceso. `schema_versions` debe incluir `2026102101`.
+7. Aplicar `supabase/migrations/2026102601_event_groups.sql`. Agrega desglose por deporte, equipo, cantidad y franjas; mantiene correcciones y propuestas anteriores. Verificar anónimo sin lectura ni escritura, operador activo limitado al alcance acordado, operador desactivado sin acceso y administrador con acceso. `schema_versions` debe incluir `2026102601`.
 8. Publicar el código con `vercel.json`. Si falta la migración, la app detiene la captura y reportes con un mensaje explícito.
 9. Probar acceso, reportes, carga de un archivo controlado, solicitud y aprobación de corrección, los cinco pasos del planificador con respuestas conocidas y desconocidas, guardado de propuesta y recuperación de contraseña. Revisar los encabezados CSP y que los SQL/CSV de desarrollo no sean servidos.
 
@@ -40,6 +40,16 @@ Aplicar primero seguridad es independiente del resto de la actualización. Las m
 - Los importes de merma valorizados al costo del catálogo son estimaciones actuales, diferenciadas de la utilidad histórica.
 
 ## Preparar una compra
+
+El modo predeterminado calcula **por partido, deporte y equipo**, con grupos independientes: por ejemplo, un partido de Club Puebla, dos de academia de fútbol y tres de béisbol. Cada grupo admite cantidad desconocida, cero/no aplica y horarios opcionales de inicio/fin para cada partido. La propuesta muestra la referencia de cada partido y su contribución por producto. Suma unidades antes de aplicar colchón, descontar inventario una sola vez y respetar los límites. Si alguna categoría no tiene referencias, el total queda parcial: no se interpreta lo desconocido como cero ni se permite guardar una compra completa.
+
+El modelo v3 busca referencias individuales de la misma categoría y primero el mismo día de la semana; solo si no hay usa otros días del mismo grupo entre semana/fin de semana. Cuando hay hora busca inicios a ±90 minutos; si no hay horario comparable usa el promedio de esa categoría y avisa. Mantiene confianza baja y no calibra automáticamente este nuevo método. Club Puebla, academia y béisbol no comparten una media de consumo.
+
+Para asociar tickets: usa franjas reales solo cuando todos los eventos del día tienen horarios y excluye las franjas traslapadas. En días de una sola categoría con inicios distintos pero sin fin registrado, infiere límites con el siguiente inicio y, para el último, el último ticket; la primera franja incluye las ventas previas al primer inicio. Estos son límites estimados de ventas, no horas de término confirmadas. Si faltan horarios pero hay una sola categoría y cantidad conocida, divide las ventas del día entre sus partidos, conservando una observación por día. Nunca divide un día mezclado entre categorías arbitrariamente. No infiere academia por ausencia de Club Puebla ni inventa una cantidad a partir de un día sin registros. Los eventos simultáneos futuros se suman suponiendo demanda independiente y muestran advertencia sobre asistentes compartidos.
+
+El desglose real se captura opcionalmente en «Capturar día» o se corrige en reportes con motivo e historial permanente. No modifica automáticamente los históricos ni asigna sus ventas a categorías inexistentes. Los horarios son franjas de atención asociadas al evento: deben incluir antes/después si se quiere medir esa venta. Las referencias con franjas explícitas no incluyen ventas fuera de esas franjas. La cantidad de partidos del desglose debe coincidir con el estacionamiento si se capturan ambos al crear el día. Las cargas de varios días dejan este desglose pendiente para corregir cada día después.
+
+También se conserva el modo «Comparar días completos de un mismo tipo», descrito a continuación.
 
 La sección independiente «Planificar compra» (`reportes.html#planificador`) guía en cinco pasos: fecha, tipo de evento, partidos, equipo y revisión. Prepara una fecha por propuesta y calcula automáticamente el día de la semana. Se puede regresar sin perder respuestas; editar una respuesta invalida el resultado anterior hasta volver a calcular. Los filtros de los reportes no cambian esta propuesta.
 

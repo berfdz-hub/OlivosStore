@@ -253,3 +253,5 @@ tr.row-flag td{background:var(--amber-soft)}
 [hidden]{display:none!important}
 .msg[role="status"]:empty{display:none}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--brand-dark);outline-offset:3px}
+.event-group{border:1px solid var(--line);border-radius:10px;padding:14px;margin:12px 0;min-width:0}.event-group legend{font-weight:700;padding:0 6px}.event-group input,.event-group select{max-width:100%;box-sizing:border-box}.event-group .field{min-width:0}
+@media(max-width:600px){.dashboard-modes .wrap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}.dashboard-mode{white-space:normal}}

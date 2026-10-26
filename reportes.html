@@ -527,75 +527,97 @@
             </section>
             <section data-planner-step="" hidden>
               <h3 tabindex="-1">¿Qué tipo de evento habrá?</h3>
-              <p>
-                Si todavía no está definido, puedes dejarlo sin especificar.
-              </p>
               <div class="field">
-                <label for="predType">Tipo de evento</label
-                ><select id="predType">
-                  <option value="sin_especificar">No lo sé todavía</option>
-                  <option value="futbol">Fútbol</option>
-                  <option value="beisbol">Béisbol / Softbol</option>
-                  <option value="entrenamiento">Entrenamiento</option>
-                  <option value="otro">Otro evento</option>
+                <label for="predComposition">¿Cómo quieres calcular?</label
+                ><select id="predComposition">
+                  <option value="groups" selected>
+                    Por partido, deporte y equipo
+                  </option>
+                  <option value="single">
+                    Comparar días completos de un mismo tipo
+                  </option>
                 </select>
               </div>
-              <p class="hint">
-                Cuando falta este dato, la referencia será más general y tendrá
-                menor confianza.
-              </p>
+              <div id="predGroupTypes" hidden></div>
+              <div id="predSingleType">
+                <p>
+                  Si todavía no está definido, puedes dejarlo sin especificar.
+                </p>
+                <div class="field">
+                  <label for="predType">Tipo de evento</label
+                  ><select id="predType">
+                    <option value="sin_especificar">No lo sé todavía</option>
+                    <option value="futbol">Fútbol</option>
+                    <option value="beisbol">Béisbol / Softbol</option>
+                    <option value="entrenamiento">Entrenamiento</option>
+                    <option value="otro">Otro evento</option>
+                  </select>
+                </div>
+                <p class="hint">
+                  Cuando falta este dato, la referencia será más general y
+                  tendrá menor confianza.
+                </p>
+              </div>
             </section>
             <section data-planner-step="" hidden>
               <h3 tabindex="-1">¿Cuántos partidos se jugarán ese día?</h3>
-              <div class="field">
-                <label for="predGamesMode">Lo que sabemos</label
-                ><select id="predGamesMode">
-                  <option value="unknown">No lo sé todavía</option>
-                  <option value="known">Sí sé cuántos partidos habrá</option>
-                  <option value="none">No aplica: no habrá partidos</option>
-                </select>
+              <div id="predGroupGames" hidden></div>
+              <div id="predSingleGames">
+                <div class="field">
+                  <label for="predGamesMode">Lo que sabemos</label
+                  ><select id="predGamesMode">
+                    <option value="unknown">No lo sé todavía</option>
+                    <option value="known">Sí sé cuántos partidos habrá</option>
+                    <option value="none">No aplica: no habrá partidos</option>
+                  </select>
+                </div>
+                <div class="field" id="predGamesField" hidden>
+                  <label for="predGames">Número de partidos</label
+                  ><input
+                    type="number"
+                    id="predGames"
+                    min="1"
+                    max="50"
+                    step="1"
+                    inputmode="numeric"
+                    disabled
+                  />
+                </div>
+                <p class="hint">
+                  «No lo sé» deja la cantidad desconocida. «No aplica» indica
+                  que habrá cero partidos.
+                </p>
               </div>
-              <div class="field" id="predGamesField" hidden>
-                <label for="predGames">Número de partidos</label
-                ><input
-                  type="number"
-                  id="predGames"
-                  min="1"
-                  max="50"
-                  step="1"
-                  inputmode="numeric"
-                  disabled
-                />
-              </div>
-              <p class="hint">
-                «No lo sé» deja la cantidad desconocida. «No aplica» indica que
-                habrá cero partidos.
-              </p>
             </section>
             <section data-planner-step="" hidden>
               <h3 tabindex="-1">¿Hay un equipo que debamos considerar?</h3>
-              <div class="field">
-                <label for="predTeamMode">Equipo</label
-                ><select id="predTeamMode">
-                  <option value="none">No aplica: sin equipo específico</option>
-                  <option value="unknown">No lo sé todavía</option>
-                  <option value="club_puebla">Club Puebla</option>
-                  <option value="named">Otro equipo</option>
-                </select>
+              <div id="predGroupTeams" hidden></div>
+              <div id="predSingleTeam">
+                <div class="field">
+                  <label for="predTeamMode">Equipo</label
+                  ><select id="predTeamMode">
+                    <option value="none">
+                      No aplica: sin equipo específico
+                    </option>
+                    <option value="unknown">No lo sé todavía</option>
+                    <option value="club_puebla">Club Puebla</option>
+                    <option value="named">Otro equipo</option>
+                  </select>
+                </div>
+                <div class="field" id="predTeamField" hidden>
+                  <label for="predTeam">Nombre del equipo</label
+                  ><input
+                    id="predTeam"
+                    maxlength="120"
+                    placeholder="Ej. Tigres"
+                    disabled
+                  />
+                </div>
+                <p class="hint">
+                  El equipo se busca en nombres y etiquetas de eventos
+                  anteriores. Si no hay referencias, te lo diremos.
+                </p>
               </div>
-              <div class="field" id="predTeamField" hidden>
-                <label for="predTeam">Nombre del equipo</label
-                ><input
-                  id="predTeam"
-                  maxlength="120"
-                  placeholder="Ej. Tigres"
-                  disabled
-                />
-              </div>
-              <p class="hint">
-                El equipo se busca en nombres y etiquetas de eventos anteriores.
-                Si no hay referencias, te lo diremos.
-              </p>
             </section>
             <section data-planner-step="" hidden>
               <h3 tabindex="-1">Revisemos antes de calcular</h3>
@@ -659,10 +681,11 @@
             ventas antes del evento, actualiza el conteo y vuelve a calcular. El
             cálculo usa los datos que indicaste y separa entre semana de fin de
             semana. Las respuestas desconocidas amplían la comparación y reducen
-            la confianza. No multiplica las ventas por el número de partidos.
-            Para comida, administración asigna un cupo por producto y un máximo
-            que se pueda vender antes de caducar. La suma de esos cupos debe
-            caber en el espacio compartido.
+            la confianza. En el cálculo por partido, cada categoría usa sus
+            propias referencias y después se suman las unidades; no se repite la
+            venta total de un día por cada juego. Para comida, administración
+            asigna un cupo por producto y un máximo que se pueda vender antes de
+            caducar. La suma de esos cupos debe caber en el espacio compartido.
           </p>
           <label class="check-option"
             ><input type="checkbox" id="planReviewed" />Revisé las existencias,

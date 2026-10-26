@@ -20,6 +20,12 @@ import {
 import { predictPurchase, evaluatePlans } from "../lib/prediction.js";
 import { initPlanner, readPlannerAnswers } from "../lib/planner.js";
 import { dayMetadata, correctionDiff } from "../lib/corrections.js";
+import {
+  initGroupEditor,
+  validateGroups,
+  totalGames,
+  groupLabel,
+} from "../lib/event-groups.js";
 const attack = '\"><img src=x onerror="globalThis.PWNED=1">&';
 function screen(name, globals = {}) {
   const { document, window } = parseHTML(
@@ -37,6 +43,11 @@ function screen(name, globals = {}) {
     associateLabels: () => associateLabels(document),
     readPlannerAnswers,
     initPlanner,
+    initGroupEditor: (options) =>
+      initGroupEditor({ ...options, root: document }),
+    validateGroups,
+    totalGames,
+    groupLabel,
     predictPurchase,
     evaluatePlans,
     monetaryBreakdown,
@@ -182,6 +193,8 @@ test("guided answers reach the real calculation and save unchanged with unknown 
     PRED_ITEMS=[{ticket_id:'t',product_id:'p',qty:10}];
     PRED_INV=[{sale_day_id:'d',product_id:'p',physical_count:5,counted_at:pastDate+'T23:00:00Z',count_source:'manual'}];
     plannerUI=initPlanner({root:document,onCalculate:()=>{renderPrediction();return !!LAST_PREDICTION;},onInvalidate:()=>{LAST_PREDICTION=null;}});
+    for(const option of document.getElementById('predComposition').options)option.removeAttribute('selected');
+    [...document.getElementById('predComposition').options].find(o=>o.value==='single').setAttribute('selected','');
     loadAll=async()=>{};
     renderPrediction();
   `);

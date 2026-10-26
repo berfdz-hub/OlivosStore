@@ -9,7 +9,7 @@ export const CONFIGURED=true;
 const previewRole=new URLSearchParams(location.search).get('role')==='operador'?'operador':'admin';
 const day='2026-10-05';
 const store={
- profiles:[{id:'admin',full_name:(previewRole==='admin'?'Administración':'Capturista')+' · prueba local',role:previewRole,active:true}],schema_versions:[{version:2026102101}],
+ profiles:[{id:'admin',full_name:(previewRole==='admin'?'Administración':'Capturista')+' · prueba local',role:previewRole,active:true}],schema_versions:[{version:2026102601}],
  products_view:[{id:'p1',name:'Agua 600 ml',category:'Bebidas',sell_price:20,cost_price:8,active:true},{id:'p2',name:'Agua 1500 ml',category:'Bebidas',sell_price:30,cost_price:12,active:true}],
  sale_days:[{id:'d1',date:day,sport:'futbol',status:'submitted',day_type:'evento_especial',event_name:'Partido de prueba',event_tags:['futbol'],created_by:'admin',profiles:{full_name:'Prueba local'},tickets:[{amount:100}]}],
  tickets_view:[{id:'t1',sale_day_id:'d1',ts:day+'T18:00:00Z',amount:100,receipt_type:'sale'}],
@@ -24,6 +24,10 @@ for(const [index,date] of ['2026-09-02','2026-09-09','2026-09-16','2026-09-05','
  store.tickets_view.push({id:'t'+id,sale_day_id:id,ts:date+'T18:00:00Z',amount:qty*20,receipt_type:'sale'});
  store.ticket_items_view.push({id:'i'+id,ticket_id:'t'+id,product_id:'p1',product_name_raw:'Agua 600 ml',qty,unit_price:20,unit_cost:8,line_net_amount:qty*20});
  for(let n=0;n<3;n++)store.games.push({id:id+n,sale_day_id:id,start_time:(12+n)+':00',cars_parked:10,cars_charged:8,parking_rate:30,charges_parking:true});
+}
+for(const [id,type,teamMode,games,qty] of [['sample3','futbol','club_puebla',1,30],['sample4','futbol','academy',2,12],['sample5','beisbol','none',3,15]]) {
+ const d=store.sale_days.find(d=>d.id===id); d.sport=type;d.event_groups=[{type,teamMode,games,team:teamMode==='club_puebla'?'Club Puebla':'',slots:teamMode==='club_puebla'?[{start:'11:30',end:'13:30'}]:[]}];
+ store.ticket_items_view.find(i=>i.ticket_id==='t'+id).qty=qty;
 }
 store.tickets=store.tickets_view;
 class Query{

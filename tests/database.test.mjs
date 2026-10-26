@@ -39,6 +39,7 @@ for (const name of [
   "2026100502_integrity.sql",
   "2026102001_planning_corrections.sql",
   "2026102101_guided_planning.sql",
+  "2026102601_event_groups.sql",
 ]) {
   try {
     await db.exec(
@@ -508,6 +509,112 @@ for (const table of [
     /permission denied/,
   );
 await db.exec("reset role");
+const mixedGroups = [
+  {
+    type: "futbol",
+    teamMode: "club_puebla",
+    team: "Club Puebla",
+    games: 1,
+    slots: [{ start: "09:00", end: "11:00" }],
+  },
+  { type: "futbol", teamMode: "academy", team: "", games: 2, slots: [] },
+  { type: "beisbol", teamMode: "none", team: "", games: 3, slots: [] },
+];
+const newGroupedDay = (
+  await as(admin, () =>
+    db.query("select save_sale_day($1) as result", [
+      {
+        date: "2001-01-01",
+        sport: "otro",
+        day_type: "evento_especial",
+        event_groups: mixedGroups,
+      },
+    ]),
+  )
+).rows[0].result.day_id;
+assert.deepEqual(
+  (
+    await db.query("select event_groups from sale_days where id=$1", [
+      newGroupedDay,
+    ])
+  ).rows[0].event_groups,
+  mixedGroups,
+);
+await assert.rejects(
+  () =>
+    as(admin, () =>
+      db.query("select save_sale_day($1,$2,$3)", [
+        { date: "2001-01-02", sport: "otro", event_groups: mixedGroups },
+        [],
+        [{ start_time: "09:00" }],
+      ]),
+    ),
+  /estacionamiento/,
+);
+const mixedPlan = {
+  ...plan,
+  event_type: "mixto",
+  games: 6,
+  model_version: "eventos-2026-10-v3",
+  summary: { groups: mixedGroups, partial: false },
+};
+const mixedRef = "00000000-0000-0000-0000-000000000220";
+const mixedId = (
+  await as(operator, () =>
+    db.query("select save_purchase_plan($1,$2) as id", [mixedPlan, mixedRef]),
+  )
+).rows[0].id;
+assert.deepEqual(
+  (await db.query("select summary from purchase_plans where id=$1", [mixedId]))
+    .rows[0].summary.groups,
+  mixedGroups,
+);
+await assert.rejects(
+  () =>
+    as(operator, () =>
+      db.query("select save_purchase_plan($1,$2)", [
+        { ...mixedPlan, games: 7 },
+        mixedRef,
+      ]),
+    ),
+  /total no coincide/,
+);
+const beforeGroups = await metadata();
+const afterGroups = { ...beforeGroups, event_groups: mixedGroups };
+await as(admin, () =>
+  request(afterGroups, beforeGroups, "00000000-0000-0000-0000-000000000221"),
+);
+assert.deepEqual((await metadata()).event_groups, mixedGroups);
+assert.deepEqual(
+  (
+    await db.query(
+      "select after_data from day_corrections where client_ref=$1",
+      ["00000000-0000-0000-0000-000000000221"],
+    )
+  ).rows[0].after_data.event_groups,
+  mixedGroups,
+);
+const invalidGroups = structuredClone(mixedGroups);
+invalidGroups[0].slots[0].end = "08:00";
+await assert.rejects(
+  () =>
+    as(admin, () =>
+      request(
+        { ...afterGroups, event_groups: invalidGroups },
+        afterGroups,
+        "00000000-0000-0000-0000-000000000222",
+      ),
+    ),
+  /Desglose/,
+);
+await assert.rejects(
+  () =>
+    db.query("update sale_days set event_groups=$1 where id=$2", [
+      invalidGroups,
+      dayId,
+    ]),
+  /sale_days_event_groups_check/,
+);
 const snapshot = (await db.query("select id,amount from tickets order by id"))
   .rows;
 const backup = await db.dumpDataDir();

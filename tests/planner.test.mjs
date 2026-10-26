@@ -20,6 +20,14 @@ function wizard(calculate = () => true) {
     onInvalidate: () => invalidations++,
   });
   const el = (id) => document.getElementById(id);
+  for (const option of el("predComposition").options)
+    option.removeAttribute("selected");
+  [...el("predComposition").options]
+    .find((o) => o.value === "single")
+    .setAttribute("selected", "");
+  el("predComposition").dispatchEvent(
+    new window.Event("change", { bubbles: true }),
+  );
   return {
     document,
     ui,
@@ -147,4 +155,61 @@ test("calculation failure stays visible in the wizard and permits retry", () => 
   w.value("predSafety", "0.20");
   assert.equal(w.ui.hasResults(), false);
   assert.equal(w.el("plannerResults").hidden, true);
+});
+
+test("mixed wizard keeps categories, independent counts, hours and teams while editing", () => {
+  const w = wizard();
+  w.value("predComposition", "groups");
+  w.value("predGroups-0-type", "futbol");
+  w.value("predGroups-1-type", "futbol");
+  w.click("predGroups-add");
+  w.value("predGroups-2-type", "beisbol");
+  w.click("plannerNext");
+  w.click("plannerNext");
+  for (const [i, count] of [1, 2, 3].entries()) {
+    w.value("predGroups-" + i + "-gamesMode", "known");
+    w.value("predGroups-" + i + "-games", String(count));
+  }
+  w.value("predGroups-0-start0", "09:00");
+  w.value("predGroups-0-end0", "11:00");
+  w.click("plannerNext");
+  assert.equal(w.step(), 3);
+  w.value("predGroups-0-teamMode", "club_puebla");
+  w.value("predGroups-1-teamMode", "academy");
+  w.value("predGroups-2-teamMode", "none");
+  w.click("plannerNext");
+  assert.equal(w.step(), 4);
+  const a = readPlannerAnswers(w.document);
+  assert.equal(a.games, 6);
+  assert.equal(a.groups[0].team, "Club Puebla");
+  assert.equal(a.groups[1].teamMode, "academy");
+  assert.equal(a.groups[2].type, "beisbol");
+  assert.deepEqual(a.groups[0].slots, [{ start: "09:00", end: "11:00" }]);
+  w.click("plannerBack");
+  w.click("plannerBack");
+  assert.equal(w.el("predGroups-0-start0").value, "09:00");
+  w.click("plannerNext");
+  w.click("plannerNext");
+  w.click("btnPredict");
+  assert.equal(w.ui.hasResults(), true);
+  w.click("plannerEdit");
+  w.click("plannerBack");
+  w.click("plannerBack");
+  w.value("predGroups-0-end0", "08:00");
+  w.click("plannerNext");
+  assert.equal(w.step(), 2);
+  assert.match(w.el("plannerError").textContent, /posterior/);
+});
+
+test("mixed wizard adds/removes groups, avoids unsafe names, and leaves unknown counts null", () => {
+  const w = wizard();
+  w.value("predComposition", "groups");
+  w.value("predGroups-0-teamMode", "named");
+  w.value("predGroups-0-team", "<img src=x onerror=alert(1)>");
+  assert.equal(w.el("plannerReview").querySelector("img"), null);
+  w.document.querySelector('[data-remove-group="1"]').click();
+  assert.equal(readPlannerAnswers(w.document).groups.length, 1);
+  assert.equal(readPlannerAnswers(w.document).games, null);
+  w.click("predGroups-add");
+  assert.match(w.el("predGroups-0-team").value, /img/);
 });
