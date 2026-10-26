@@ -1,840 +1,429 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Captura · Olivos Store</title>
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="theme-color" content="#F4F6F1">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Olivos Store">
-<link rel="stylesheet" href="styles.css">
-<script src="lib/vendor/supabase.min.js"></script>
-</head>
-<body>
-
-<div class="topbar">
-  <div class="wrap">
-    <div class="brand"><img class="brand-mark" src="icons/icon-192.png" alt=""><span>Olivos Store</span></div>
-    <div class="who">
-      <span id="whoName"></span>
-      <span class="role-pill" id="rolePill">OPERADOR</span>
-      <a href="reportes.html" class="btn-ghost" style="text-decoration:none">Ver reportes</a>
-      <button class="btn-ghost" onclick="doLogout()">Salir</button>
-    </div>
-  </div>
-</div>
-
-<main class="wrap">
-  <div id="weekendNotice"></div>
-
-  <div class="eyebrow">Captura de datos</div>
-  <h2 class="section-title">Nuevo día de venta</h2>
-  <p class="footnote" style="margin-top:6px">Llena la fecha, los partidos, sube el CSV de recibos y (si tienes) el conteo físico de algunos productos. Al guardar, todo queda en la base de datos para los reportes del administrador.</p>
-
-  <div id="msgBox"></div>
-
-  <form id="formDay">
-    <div class="card">
-      <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:14px">Datos del día</h3>
-      <div class="grid grid4">
-        <div class="field">
-          <label>Fecha</label>
-          <input type="date" id="fDate" required>
-          <div class="hint" id="fDateDay"></div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Captura · Olivos Store</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="theme-color" content="#F4F6F1" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Olivos Store" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="lib/vendor/supabase.min.js"></script>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="wrap">
+        <div class="brand">
+          <img class="brand-mark" src="icons/icon-192.png" alt="" /><span
+            >Olivos Store</span
+          >
         </div>
-        <div class="field">
-          <label>Deporte</label>
-          <select id="fSport">
-            <option value="futbol">Fútbol</option>
-            <option value="beisbol">Béisbol / Softbol</option>
-            <option value="otro">Otro / día normal</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Categoría del día</label>
-          <select id="fDayCategory">
-            <option value="entrenamiento_normal" selected>Entrenamiento normal</option>
-            <option value="dia_partido">Día de partido</option>
-            <option value="evento_especial">Evento especial</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Tarifa estacionamiento</label>
-          <input type="number" id="fRate" value="30" min="0">
+        <div class="who">
+          <span id="whoName"></span>
+          <span class="role-pill" id="rolePill">OPERADOR</span>
+          <a
+            href="reportes.html#planificador"
+            class="btn-ghost"
+            style="text-decoration: none"
+            >Planificar compra</a
+          >
+          <a
+            href="reportes.html"
+            class="btn-ghost"
+            style="text-decoration: none"
+            >Ver reportes</a
+          >
+          <button class="btn-ghost" data-action="logout">Salir</button>
         </div>
       </div>
-      <div id="existingDayNotice"></div>
-      <div class="grid grid2">
-        <div class="field">
-          <label>Nombre del evento (opcional)</label>
-          <input type="text" id="fEventName" placeholder="ej. Torneo Club Puebla">
-        </div>
-        <div class="field">
-          <label>Etiquetas del evento (elige una o varias)</label>
-          <div class="check-group" id="fEventTags">
-            <label class="check-option"><input type="checkbox" value="futbol"> Fútbol</label>
-            <label class="check-option"><input type="checkbox" value="beisbol"> Béisbol / Softbol</label>
-            <label class="check-option"><input type="checkbox" value="club_puebla"> Club Puebla</label>
-            <label class="check-option"><input type="checkbox" value="otro"> Otro</label>
+    </div>
+
+    <main class="wrap">
+      <div id="weekendNotice"></div>
+
+      <div class="eyebrow">Captura de datos</div>
+      <h2 class="section-title">Nuevo día de venta</h2>
+      <p class="footnote" style="margin-top: 6px">
+        Llena la fecha, los partidos, sube el CSV de recibos y (si tienes) el
+        conteo físico de algunos productos. Al guardar, todo queda en la base de
+        datos para los reportes del administrador.
+      </p>
+
+      <div id="msgBox"></div>
+
+      <form id="formDay">
+        <div class="card">
+          <h3
+            style="
+              font-size: 16px;
+              font-family: &quot;Source Sans 3&quot;;
+              font-weight: 700;
+              margin-bottom: 14px;
+            "
+          >
+            Datos del día
+          </h3>
+          <div class="grid grid4">
+            <div class="field">
+              <label>Fecha</label>
+              <input type="date" id="fDate" required />
+              <div class="hint" id="fDateDay"></div>
+            </div>
+            <div class="field">
+              <label>Deporte</label>
+              <select id="fSport">
+                <option value="futbol">Fútbol</option>
+                <option value="beisbol">Béisbol / Softbol</option>
+                <option value="otro">Otro / día normal</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Categoría del día</label>
+              <select id="fDayCategory">
+                <option value="entrenamiento_normal" selected>
+                  Entrenamiento normal
+                </option>
+                <option value="dia_partido">Día de partido</option>
+                <option value="evento_especial">Evento especial</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Tarifa estacionamiento</label>
+              <input type="number" id="fRate" value="30" min="0" />
+            </div>
           </div>
-          <div class="hint">Se guardan cuando la categoría del día es Evento especial.</div>
+          <div id="existingDayNotice"></div>
+          <div class="grid grid2">
+            <div class="field">
+              <label>Nombre del evento (opcional)</label>
+              <input
+                type="text"
+                id="fEventName"
+                placeholder="ej. Torneo Club Puebla"
+              />
+            </div>
+            <div class="field">
+              <label>Etiquetas del evento (elige una o varias)</label>
+              <div class="check-group" id="fEventTags">
+                <label class="check-option"
+                  ><input type="checkbox" value="futbol" /> Fútbol</label
+                >
+                <label class="check-option"
+                  ><input type="checkbox" value="beisbol" /> Béisbol /
+                  Softbol</label
+                >
+                <label class="check-option"
+                  ><input type="checkbox" value="club_puebla" /> Club
+                  Puebla</label
+                >
+                <label class="check-option"
+                  ><input type="checkbox" value="otro" /> Otro</label
+                >
+              </div>
+              <div class="hint">
+                Se guardan cuando la categoría del día es Evento especial.
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Notas (opcional)</label>
+            <textarea
+              id="fNotes"
+              placeholder="Cualquier cosa rara del día que el admin deba saber..."
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3
+            style="
+              font-size: 16px;
+              font-family: &quot;Source Sans 3&quot;;
+              font-weight: 700;
+              margin-bottom: 4px;
+            "
+          >
+            Partidos y estacionamiento
+          </h3>
+          <p class="footnote" style="margin-bottom: 12px">
+            Agrega un partido por cada juego del día — incluye los amistosos o
+            de liga entre semana. Si ese partido no cobró estacionamiento,
+            desmarca la casilla.
+          </p>
+          <div id="games"></div>
+          <button type="button" class="btn sec sm" data-action="addGame">
+            + Agregar partido
+          </button>
+        </div>
+
+        <div class="card">
+          <h3
+            style="
+              font-size: 16px;
+              font-family: &quot;Source Sans 3&quot;;
+              font-weight: 700;
+              margin-bottom: 4px;
+            "
+          >
+            Recibos del punto de venta
+          </h3>
+          <p class="footnote" style="margin-bottom: 12px">
+            El CSV "receipts" exportado del POS. Puedes subir un archivo de
+            <b>un solo día</b>, o uno que traiga
+            <b>varios días mezclados</b> (ej. el mes completo) — la app los
+            detecta y separa solos.
+          </p>
+          <input type="file" id="fCsv" accept=".csv,text/csv" />
+          <div id="csvSummary"></div>
+          <label id="replaceReceiptWrap" hidden
+            ><input type="checkbox" id="fReplaceReceipts" /> Conciliar recibos
+            existentes con este archivo (administración; queda
+            registrado)</label
+          >
+        </div>
+
+        <div class="card" id="cardInv">
+          <h3
+            style="
+              font-size: 16px;
+              font-family: &quot;Source Sans 3&quot;;
+              font-weight: 700;
+              margin-bottom: 4px;
+            "
+          >
+            Conteo físico de inventario (opcional)
+          </h3>
+          <p class="footnote" style="margin-bottom: 12px">
+            Puedes importar las existencias actuales de Loyverse o capturarlas
+            manualmente. Los recibos de venta no contienen inventario.
+          </p>
+          <div
+            style="
+              border: 1px solid var(--line);
+              border-radius: 10px;
+              padding: 14px;
+              margin-bottom: 14px;
+              background: var(--surface-2);
+            "
+          >
+            <label style="margin-bottom: 6px"
+              >Importar existencias de Loyverse</label
+            >
+            <p class="footnote" style="margin-bottom: 10px">
+              En Loyverse abre
+              <b>Back Office → Lista de artículos → Exportar</b>. Sube aquí ese
+              CSV; no uses el archivo de recibos.
+            </p>
+            <input type="file" id="fInventoryCsv" accept=".csv,text/csv" />
+            <div id="inventoryCsvSummary"></div>
+            <div class="field">
+              <label for="fCountAt"
+                >Fecha y hora de estas existencias (Ciudad de México)</label
+              ><input type="datetime-local" id="fCountAt" />
+              <div class="hint">
+                Usa la hora del conteo o de la exportación. El inventario
+                importado es una referencia del sistema.
+              </div>
+            </div>
+          </div>
+          <p class="footnote" style="margin-bottom: 12px">
+            Revisa las cantidades importadas o llena solamente los productos que
+            contaste. Los demás se dejan vacíos.
+          </p>
+          <div class="scroll">
+            <table id="tblInv">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th style="width: 140px">Conteo físico</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card hide" id="cardMultiDay">
+          <h3
+            style="
+              font-size: 16px;
+              font-family: &quot;Source Sans 3&quot;;
+              font-weight: 700;
+              margin-bottom: 4px;
+            "
+          >
+            Días detectados en el archivo
+          </h3>
+          <p class="footnote" style="margin-bottom: 12px">
+            La app ya clasificó todos los días como "Entrenamiento normal" y
+            marcó con ⚡ los que tuvieron venta fuera de lo normal (posibles
+            eventos especiales o días de partido) — solo revisa esos, dales
+            deporte/categoría/evento, y confirma el resto. No se agregan
+            partidos/estacionamiento ni conteo de inventario en este modo; si
+            algún día necesita eso, lo editas después.
+          </p>
+          <div
+            style="
+              border: 1px solid var(--line);
+              border-radius: 8px;
+              padding: 12px;
+              margin-bottom: 10px;
+              background: var(--surface-2);
+            "
+          >
+            <label style="margin-bottom: 8px"
+              >Aplicar a todos los días de este archivo</label
+            >
+            <div class="grid grid4" style="align-items: end">
+              <div class="field" style="margin-bottom: 0">
+                <select id="mdAllSport">
+                  <option value="futbol">Fútbol</option>
+                  <option value="beisbol">Béisbol / Softbol</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+              <div class="field" style="margin-bottom: 0">
+                <select id="mdAllCategoria">
+                  <option value="evento_especial">Evento especial</option>
+                  <option value="dia_partido">Día de partido</option>
+                  <option value="entrenamiento_normal" selected>
+                    Entrenamiento normal
+                  </option>
+                </select>
+              </div>
+              <div class="field" style="margin-bottom: 0">
+                <input
+                  type="text"
+                  id="mdAllEvento"
+                  placeholder="Nombre del evento (opcional)"
+                />
+              </div>
+              <button type="button" class="btn sec sm" id="btnApplyAll">
+                Aplicar a todos
+              </button>
+            </div>
+            <div class="field" style="margin: 10px 0 0">
+              <label>Etiquetas para todos</label>
+              <div class="check-group compact" id="mdAllTags">
+                <label class="check-option"
+                  ><input type="checkbox" value="futbol" /> Fútbol</label
+                ><label class="check-option"
+                  ><input type="checkbox" value="beisbol" /> Béisbol</label
+                ><label class="check-option"
+                  ><input type="checkbox" value="club_puebla" /> Club
+                  Puebla</label
+                ><label class="check-option"
+                  ><input type="checkbox" value="otro" /> Otro</label
+                >
+              </div>
+            </div>
+          </div>
+          <div
+            style="
+              border: 1px solid var(--amber);
+              border-radius: 8px;
+              padding: 12px;
+              margin-bottom: 14px;
+              background: var(--amber-soft);
+            "
+          >
+            <label style="margin-bottom: 8px"
+              >Aplicar solo a los días marcados ⚡ (venta fuerte)</label
+            >
+            <div class="grid grid4" style="align-items: end">
+              <div class="field" style="margin-bottom: 0">
+                <select id="mdFlagSport">
+                  <option value="futbol">Fútbol</option>
+                  <option value="beisbol">Béisbol / Softbol</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+              <div class="field" style="margin-bottom: 0">
+                <select id="mdFlagCategoria">
+                  <option value="evento_especial" selected>
+                    Evento especial
+                  </option>
+                  <option value="dia_partido">Día de partido</option>
+                  <option value="entrenamiento_normal">
+                    Entrenamiento normal
+                  </option>
+                </select>
+              </div>
+              <div class="field" style="margin-bottom: 0">
+                <input
+                  type="text"
+                  id="mdFlagEvento"
+                  placeholder="Nombre del evento (ej. Torneo Julio)"
+                />
+              </div>
+              <button type="button" class="btn sec sm" id="btnApplyFlagged">
+                Aplicar a marcados
+              </button>
+            </div>
+            <div class="field" style="margin: 10px 0 0">
+              <label>Etiquetas para días marcados</label>
+              <div class="check-group compact" id="mdFlagTags">
+                <label class="check-option"
+                  ><input type="checkbox" value="futbol" /> Fútbol</label
+                ><label class="check-option"
+                  ><input type="checkbox" value="beisbol" /> Béisbol</label
+                ><label class="check-option"
+                  ><input type="checkbox" value="club_puebla" /> Club
+                  Puebla</label
+                ><label class="check-option"
+                  ><input type="checkbox" value="otro" /> Otro</label
+                >
+              </div>
+            </div>
+          </div>
+          <div class="scroll">
+            <table id="tblMultiDay">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th class="num">Tickets</th>
+                  <th class="num">Venta</th>
+                  <th>Deporte</th>
+                  <th>Categoría</th>
+                  <th>Evento</th>
+                  <th>Etiquetas</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="row-actions">
+          <button class="btn" type="submit" id="btnSave">Guardar día</button>
+        </div>
+      </form>
+
+      <div class="eyebrow" style="margin-top: 44px">Historial</div>
+      <h2 class="section-title">Días capturados recientemente</h2>
+      <div class="card" style="margin-top: 16px">
+        <div class="scroll">
+          <table id="tblDays">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Deporte</th>
+                <th class="num">Tickets</th>
+                <th class="num">Venta</th>
+                <th>Estado</th>
+                <th>Capturado por</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
-      <div class="field">
-        <label>Notas (opcional)</label>
-        <textarea id="fNotes" placeholder="Cualquier cosa rara del día que el admin deba saber..."></textarea>
-      </div>
-    </div>
+    </main>
 
-    <div class="card">
-      <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:4px">Partidos y estacionamiento</h3>
-      <p class="footnote" style="margin-bottom:12px">Agrega un partido por cada juego del día — incluye los amistosos o de liga entre semana. Si ese partido no cobró estacionamiento, desmarca la casilla.</p>
-      <div id="games"></div>
-      <button type="button" class="btn sec sm" onclick="addGame()">+ Agregar partido</button>
-    </div>
-
-    <div class="card">
-      <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:4px">Recibos del punto de venta</h3>
-      <p class="footnote" style="margin-bottom:12px">El CSV "receipts" exportado del POS. Puedes subir un archivo de <b>un solo día</b>, o uno que traiga <b>varios días mezclados</b> (ej. el mes completo) — la app los detecta y separa solos.</p>
-      <input type="file" id="fCsv" accept=".csv,text/csv">
-      <div id="csvSummary"></div>
-    </div>
-
-    <div class="card" id="cardInv">
-      <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:4px">Conteo físico de inventario (opcional)</h3>
-      <p class="footnote" style="margin-bottom:12px">Puedes importar las existencias actuales de Loyverse o capturarlas manualmente. Los recibos de venta no contienen inventario.</p>
-      <div style="border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px;background:var(--surface-2)">
-        <label style="margin-bottom:6px">Importar existencias de Loyverse</label>
-        <p class="footnote" style="margin-bottom:10px">En Loyverse abre <b>Back Office → Lista de artículos → Exportar</b>. Sube aquí ese CSV; no uses el archivo de recibos.</p>
-        <input type="file" id="fInventoryCsv" accept=".csv,text/csv">
-        <div id="inventoryCsvSummary"></div>
-      </div>
-      <p class="footnote" style="margin-bottom:12px">Revisa las cantidades importadas o llena solamente los productos que contaste. Los demás se dejan vacíos.</p>
-      <div class="scroll">
-        <table id="tblInv"><thead><tr><th>Producto</th><th style="width:140px">Conteo físico</th></tr></thead><tbody></tbody></table>
-      </div>
-    </div>
-
-    <div class="card hide" id="cardMultiDay">
-      <h3 style="font-size:16px;font-family:'Source Sans 3';font-weight:700;margin-bottom:4px">Días detectados en el archivo</h3>
-      <p class="footnote" style="margin-bottom:12px">La app ya clasificó todos los días como "Entrenamiento normal" y marcó con ⚡ los que tuvieron venta fuera de lo normal (posibles eventos especiales o días de partido) — solo revisa esos, dales deporte/categoría/evento, y confirma el resto. No se agregan partidos/estacionamiento ni conteo de inventario en este modo; si algún día necesita eso, lo editas después.</p>
-      <div style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;background:var(--surface-2)">
-        <label style="margin-bottom:8px">Aplicar a todos los días de este archivo</label>
-        <div class="grid grid4" style="align-items:end">
-          <div class="field" style="margin-bottom:0"><select id="mdAllSport">
-            <option value="futbol">Fútbol</option><option value="beisbol">Béisbol / Softbol</option><option value="otro">Otro</option>
-          </select></div>
-          <div class="field" style="margin-bottom:0"><select id="mdAllCategoria">
-            <option value="evento_especial">Evento especial</option><option value="dia_partido">Día de partido</option><option value="entrenamiento_normal" selected>Entrenamiento normal</option>
-          </select></div>
-          <div class="field" style="margin-bottom:0"><input type="text" id="mdAllEvento" placeholder="Nombre del evento (opcional)"></div>
-          <button type="button" class="btn sec sm" id="btnApplyAll">Aplicar a todos</button>
-        </div>
-        <div class="field" style="margin:10px 0 0"><label>Etiquetas para todos</label><div class="check-group compact" id="mdAllTags">
-          <label class="check-option"><input type="checkbox" value="futbol"> Fútbol</label><label class="check-option"><input type="checkbox" value="beisbol"> Béisbol</label><label class="check-option"><input type="checkbox" value="club_puebla"> Club Puebla</label><label class="check-option"><input type="checkbox" value="otro"> Otro</label>
-        </div></div>
-      </div>
-      <div style="border:1px solid var(--amber);border-radius:8px;padding:12px;margin-bottom:14px;background:var(--amber-soft)">
-        <label style="margin-bottom:8px">Aplicar solo a los días marcados ⚡ (venta fuerte)</label>
-        <div class="grid grid4" style="align-items:end">
-          <div class="field" style="margin-bottom:0"><select id="mdFlagSport">
-            <option value="futbol">Fútbol</option><option value="beisbol">Béisbol / Softbol</option><option value="otro">Otro</option>
-          </select></div>
-          <div class="field" style="margin-bottom:0"><select id="mdFlagCategoria">
-            <option value="evento_especial" selected>Evento especial</option><option value="dia_partido">Día de partido</option><option value="entrenamiento_normal">Entrenamiento normal</option>
-          </select></div>
-          <div class="field" style="margin-bottom:0"><input type="text" id="mdFlagEvento" placeholder="Nombre del evento (ej. Torneo Julio)"></div>
-          <button type="button" class="btn sec sm" id="btnApplyFlagged">Aplicar a marcados</button>
-        </div>
-        <div class="field" style="margin:10px 0 0"><label>Etiquetas para días marcados</label><div class="check-group compact" id="mdFlagTags">
-          <label class="check-option"><input type="checkbox" value="futbol"> Fútbol</label><label class="check-option"><input type="checkbox" value="beisbol"> Béisbol</label><label class="check-option"><input type="checkbox" value="club_puebla"> Club Puebla</label><label class="check-option"><input type="checkbox" value="otro"> Otro</label>
-        </div></div>
-      </div>
-      <div class="scroll">
-        <table id="tblMultiDay"><thead><tr><th>Fecha</th><th class="num">Tickets</th><th class="num">Venta</th><th>Deporte</th><th>Categoría</th><th>Evento</th><th>Etiquetas</th></tr></thead><tbody></tbody></table>
-      </div>
-    </div>
-
-    <div class="row-actions">
-      <button class="btn" type="submit" id="btnSave">Guardar día</button>
-    </div>
-  </form>
-
-  <div class="eyebrow" style="margin-top:44px">Historial</div>
-  <h2 class="section-title">Días capturados recientemente</h2>
-  <div class="card" style="margin-top:16px">
-    <div class="scroll">
-      <table id="tblDays"><thead><tr><th>Fecha</th><th>Deporte</th><th class="num">Tickets</th><th class="num">Venta</th><th>Estado</th><th>Capturado por</th></tr></thead><tbody></tbody></table>
-    </div>
-  </div>
-</main>
-
-<script type="module">
-import { supabase } from "./lib/supabase-client.js";
-import { requireRole, signOut, getCurrentProfile } from "./lib/auth.js";
-import { parseReceipts, parseInventory } from "./lib/csv.js";
-
-window.doLogout = signOut;
-
-let CATALOG = [];
-let PARSED_TICKETS = null;
-let PARSED_DAYS = null; // [{date, tickets:[], venta}] cuando el CSV trae mas de un dia
-let PARSED_INVENTORY = null;
-let CURRENT_PROFILE = null;
-
-function localISODate(date = new Date()) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function checkedTags(root) {
-  return [...root.querySelectorAll('input[type="checkbox"]:checked')].map(input => input.value);
-}
-
-function setCheckedTags(root, values) {
-  const selected = new Set(values);
-  root.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = selected.has(input.value); });
-}
-
-function eventTagChecks(className, values = []) {
-  const selected = new Set(values);
-  const options = [['futbol', 'Fútbol'], ['beisbol', 'Béisbol'], ['club_puebla', 'Club Puebla'], ['otro', 'Otro']];
-  return `<div class="check-group compact">${options.map(([value, label]) =>
-    `<label class="check-option"><input type="checkbox" class="${className}" value="${value}" ${selected.has(value) ? 'checked' : ''}> ${label}</label>`
-  ).join('')}</div>`;
-}
-
-function addGame(hora = '', ap = '', ac = '', cobra = true, nota = '') {
-  const wrap = document.createElement('div');
-  wrap.style.border = '1px solid var(--line)';
-  wrap.style.borderRadius = '8px';
-  wrap.style.padding = '12px';
-  wrap.style.marginBottom = '10px';
-  wrap.innerHTML = `
-    <div class="grid grid3">
-      <div class="field" style="margin-bottom:0"><label>Hora de inicio</label><input type="time" class="gHora" value="${hora}"></div>
-      <div class="field" style="margin-bottom:0"><label>Autos en el lote</label><input type="number" class="gAutosP" min="0" value="${ap}"></div>
-      <div class="field" style="margin-bottom:0"><label>Autos cobrados</label><input type="number" class="gAutosC" min="0" value="${ac}"></div>
-    </div>
-    <div style="display:flex;gap:14px;align-items:center;margin-top:10px;flex-wrap:wrap">
-      <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin:0"><input type="checkbox" class="gCobra" ${cobra ? 'checked' : ''}> Se cobra estacionamiento</label>
-      <input type="text" class="gNota" placeholder="Nota (ej. amistoso entre semana, liga...)" value="${nota}" style="flex:1;min-width:180px;padding:6px 10px">
-      <button type="button" class="btn sec sm gQuitar" style="margin:0">Quitar</button>
-    </div>
-  `;
-  const cobraBox = wrap.querySelector('.gCobra');
-  const acInput = wrap.querySelector('.gAutosC');
-  const syncCobra = () => {
-    acInput.disabled = !cobraBox.checked;
-    if (!cobraBox.checked) acInput.value = 0;
-  };
-  cobraBox.addEventListener('change', syncCobra);
-  syncCobra();
-  wrap.querySelector('.gQuitar').onclick = () => wrap.remove();
-  document.getElementById('games').appendChild(wrap);
-}
-window.addGame = addGame;
-
-function getGames() {
-  return [...document.getElementById('games').children].map(row => {
-    const hora = row.querySelector('.gHora').value;
-    const ap = parseInt(row.querySelector('.gAutosP').value) || 0;
-    const cobra = row.querySelector('.gCobra').checked;
-    const ac = cobra ? (parseInt(row.querySelector('.gAutosC').value) || 0) : 0;
-    const nota = row.querySelector('.gNota').value.trim();
-    return { hora, ap, ac, cobra, nota };
-  }).filter(g => g.hora);
-}
-
-function updateDayLabel() {
-  const v = document.getElementById('fDate').value;
-  const el = document.getElementById('fDateDay');
-  if (!v) { el.textContent = ''; return; }
-  const [y, m, d] = v.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  const dow = dt.getDay(); // 0 dom .. 6 sab
-  const nombre = dt.toLocaleDateString('es-MX', { weekday: 'long' });
-  const esFinde = dow === 0 || dow === 6;
-  el.textContent = esFinde ? `${nombre} (fin de semana)` : `${nombre} (entre semana)`;
-}
-
-function msg(type, html) { document.getElementById('msgBox').innerHTML = `<div class="msg ${type}">${html}</div>`; }
-const money = n => '$' + Number(n).toLocaleString('es-MX', { maximumFractionDigits: 0 });
-
-function renderInventoryInputs() {
-  const previous = new Map([...document.querySelectorAll('.invCount')].map(input => [input.dataset.pid, input.value]));
-  document.querySelector('#tblInv tbody').innerHTML = CATALOG.map(product => `
-    <tr><td>${product.name}</td><td><input type="number" min="0" class="invCount" data-pid="${product.id}" value="${previous.get(product.id) || ''}" style="width:110px"></td></tr>
-  `).join('');
-}
-
-async function reloadCatalog() {
-  const { data, error } = await supabase
-    .from('products_view').select('id, name, category, sell_price').eq('active', true).order('name');
-  if (error) throw new Error('No pude cargar el catálogo de productos: ' + error.message);
-  CATALOG = data || [];
-  renderInventoryInputs();
-}
-
-async function init() {
-  const profile = await requireRole(['operador', 'admin']);
-  if (!profile) return;
-  CURRENT_PROFILE = profile;
-  document.getElementById('whoName').textContent = profile.full_name || profile.email;
-  if (profile.role === 'admin') {
-    const pill = document.getElementById('rolePill');
-    pill.textContent = 'ADMIN'; pill.classList.add('admin');
-  }
-
-  document.getElementById('fDate').value = localISODate();
-  addGame();
-  updateDayLabel();
-  document.getElementById('fDate').addEventListener('change', () => {
-    updateDayLabel();
-    checkExistingDate();
-  });
-
-  try { await reloadCatalog(); }
-  catch (error) { msg('err', error.message); return; }
-
-  document.getElementById('fCsv').addEventListener('change', onCsvChange);
-  document.getElementById('fInventoryCsv').addEventListener('change', onInventoryCsvChange);
-  document.getElementById('formDay').addEventListener('submit', onSubmit);
-  wireApplyAll();
-
-  loadDays(profile);
-  showWeekendNotice();
-  checkExistingDate();
-}
-
-async function findDayByDate(date) {
-  if (!date) return null;
-  const { data, error } = await supabase.from('sale_days')
-    .select('id,date,sport,status')
-    .eq('date', date)
-    .maybeSingle();
-  if (error) throw new Error('No pude revisar si la fecha ya existe: ' + error.message);
-  return data;
-}
-
-async function checkExistingDate() {
-  const date = document.getElementById('fDate').value;
-  const el = document.getElementById('existingDayNotice');
-  if (!date) { el.innerHTML = ''; return; }
-  try {
-    const day = await findDayByDate(date);
-    el.innerHTML = day
-      ? '<div class="msg info" style="margin-top:12px"><b>Esta fecha ya tiene ventas registradas.</b> Puedes completar aquí sus partidos, autos y estacionamiento. Las ventas existentes se conservarán.</div>'
-      : '';
-  } catch (_) {
-    el.innerHTML = '';
-  }
-}
-
-async function showWeekendNotice() {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const dow = today.getDay();
-  const satOffset = dow === 6 ? 0 : (dow === 0 ? -1 : 6 - dow);
-  const sat = new Date(today); sat.setDate(today.getDate() + satOffset);
-  const sun = new Date(sat); sun.setDate(sat.getDate() + 1);
-  const satISO = localISODate(sat), sunISO = localISODate(sun);
-
-  const { data, error } = await supabase.from('scheduled_games')
-    .select('date, start_time, sport, notes').in('date', [satISO, sunISO]).order('start_time');
-  const el = document.getElementById('weekendNotice');
-  if (error || !data) { el.innerHTML = ''; return; }
-  const sportLabel = { futbol: 'Fútbol', beisbol: 'Béisbol / Softbol', otro: 'Otro' };
-  if (data.length) {
-    el.innerHTML = `<div class="msg ok">Este fin de semana (${satISO} y ${sunISO}) hay <b>${data.length}</b> partido(s) agendado(s): ${
-      data.map(g => `${g.date === satISO ? 'sáb' : 'dom'} ${g.start_time} ${sportLabel[g.sport] || g.sport}${g.notes ? ' — ' + g.notes : ''}`).join('; ')
-    }. <a href="reportes.html">Ver/editar calendario</a></div>`;
-  } else {
-    el.innerHTML = `<div class="msg warn">No hay partidos agendados para este fin de semana todavía. <a href="reportes.html">Agendar en el calendario</a></div>`;
-  }
-}
-
-async function registerImportedProducts(products) {
-  const linked = [], failed = [];
-  for (const product of products) {
-    if (product.sell_price == null) {
-      failed.push(`${product.name} (el archivo no trae precio unitario)`);
-      continue;
-    }
-    const params = {
-      p_name: product.name,
-      p_category: product.category || 'Otro',
-      p_sell_price: product.sell_price,
-      p_cost_price: product.cost_price
-    };
-    let { error } = await supabase.rpc('register_imported_product', params);
-    if (error && CURRENT_PROFILE?.role === 'admin') {
-      const direct = await supabase.from('products').insert({
-        name: product.name, category: product.category || 'Otro', sell_price: product.sell_price,
-        cost_price: product.cost_price, active: true
-      }).select('id').single();
-      error = direct.error;
-      if (!error && direct.data?.id) {
-        const repair = await supabase.from('ticket_items')
-          .update({ product_id: direct.data.id })
-          .is('product_id', null)
-          .eq('product_name_raw', product.name);
-        if (repair.error) error = repair.error;
-      }
-    }
-    if (error) failed.push(`${product.name} (${error.message})`);
-    else linked.push(product.name);
-  }
-  if (linked.length) await reloadCatalog();
-  return { linked, failed };
-}
-
-function onCsvChange(e) {
-  const f = e.target.files[0];
-  if (!f) return;
-  const reader = new FileReader();
-  reader.onload = async () => {
-    try {
-      let parsed = parseReceipts(reader.result, CATALOG);
-      let registration = { linked: [], failed: [] };
-      if (parsed.productsToCreate?.length) {
-        registration = await registerImportedProducts(parsed.productsToCreate);
-        if (registration.linked.length) parsed = parseReceipts(reader.result, CATALOG);
-      }
-      const { tickets, unmatched, descartados } = parsed;
-      PARSED_TICKETS = tickets;
-      const venta = tickets.reduce((s, t) => s + t.amount, 0);
-      let html = `<div class="msg ok"><b>${tickets.length}</b> tickets leídos, venta total <b>${money(venta)}</b>.`;
-      if (descartados) html += ` (${descartados} filas descartadas: reembolsos o sin fecha legible)`;
-      html += `</div>`;
-      if (registration.linked.length) {
-        html += `<div class="msg ok"><b>${registration.linked.length} producto(s) nuevo(s) registrado(s) automáticamente:</b> ${registration.linked.join(', ')}.</div>`;
-      }
-      if (unmatched.length) {
-        html += `<div class="msg warn"><b>${unmatched.length} producto(s) no pudieron vincularse al catálogo.</b> Se conservarán en el ticket, pero necesitan revisión:<br>${unmatched.join(', ')}</div>`;
-      }
-      if (registration.failed.length) {
-        html += `<div class="msg err"><b>No pude registrar automáticamente:</b> ${registration.failed.join('; ')}. Si eres operador, el administrador debe ejecutar permitir_registrar_productos_importados.sql una sola vez.</div>`;
-      }
-
-      const byDate = new Map();
-      tickets.forEach(t => {
-        // Conserva la fecha comercial escrita por Loyverse. Cortar el ISO en
-        // UTC movía al día siguiente las ventas nocturnas de México.
-        const d = t.sale_date || localISODate(new Date(t.ts));
-        if (!byDate.has(d)) byDate.set(d, []);
-        byDate.get(d).push(t);
-      });
-      const distinctDates = [...byDate.keys()].sort();
-
-      if (distinctDates.length > 1) {
-        PARSED_DAYS = distinctDates.map(date => ({
-          date, tickets: byDate.get(date), venta: byDate.get(date).reduce((s, t) => s + t.amount, 0)
-        }));
-        flagStrongSaleDays(PARSED_DAYS);
-        const nFlagged = PARSED_DAYS.filter(d => d.flag).length;
-        html += `<div class="msg ok">Este archivo trae <b>${distinctDates.length} días distintos</b> (${distinctDates[0]} a ${distinctDates[distinctDates.length - 1]})`;
-        html += nFlagged
-          ? ` — <b>${nFlagged}</b> se marcaron con ⚡ por venta fuera de lo normal, revísalos abajo. El resto ya quedó como entrenamiento normal.</div>`
-          : ` — ninguno se ve fuera de lo normal, ya quedaron como entrenamiento normal. Ajusta el deporte si hace falta.</div>`;
-        renderMultiDayTable();
-        document.getElementById('cardMultiDay').classList.remove('hide');
-        document.getElementById('cardInv').classList.add('hide');
-        document.getElementById('btnSave').textContent = `Guardar ${distinctDates.length} días`;
-      } else {
-        PARSED_DAYS = null;
-        document.getElementById('cardMultiDay').classList.add('hide');
-        document.getElementById('cardInv').classList.remove('hide');
-        document.getElementById('btnSave').textContent = 'Guardar día';
-        if (distinctDates.length === 1 && distinctDates[0] !== document.getElementById('fDate').value) {
-          document.getElementById('fDate').value = distinctDates[0];
-          updateDayLabel();
-          checkExistingDate();
-        }
-      }
-      document.getElementById('csvSummary').innerHTML = html;
-    } catch (err) {
-      PARSED_TICKETS = null; PARSED_DAYS = null;
-      document.getElementById('cardMultiDay').classList.add('hide');
-      document.getElementById('csvSummary').innerHTML = `<div class="msg err">${err.message}</div>`;
-    }
-  };
-  reader.readAsText(f, 'UTF-8');
-}
-
-function onInventoryCsvChange(e) {
-  const file = e.target.files[0];
-  const summary = document.getElementById('inventoryCsvSummary');
-  if (!file) { PARSED_INVENTORY = null; summary.innerHTML = ''; return; }
-  const reader = new FileReader();
-  reader.onload = async () => {
-    try {
-      // Otra persona pudo haber agregado el producto desde ventas en otra sesión.
-      await reloadCatalog();
-      let result = parseInventory(reader.result, CATALOG);
-      let registration = { linked: [], failed: [] };
-      if (result.productsToCreate?.length) {
-        registration = await registerImportedProducts(result.productsToCreate);
-        if (registration.linked.length) result = parseInventory(reader.result, CATALOG);
-      }
-      PARSED_INVENTORY = result.counts;
-      document.querySelectorAll('.invCount').forEach(input => { input.value = ''; });
-      result.counts.forEach(count => {
-        const input = document.querySelector(`.invCount[data-pid="${count.product_id}"]`);
-        if (input) input.value = count.physical_count;
-      });
-      let html = `<div class="msg ok"><b>${result.counts.length} producto(s) con existencia importada.</b> Fuente: ${result.stockColumns.join(', ')}.</div>`;
-      if (registration.linked.length) html += `<div class="msg ok"><b>${registration.linked.length} producto(s) nuevo(s) registrado(s) desde el inventario:</b> ${registration.linked.join(', ')}.</div>`;
-      if (result.unmatched.length) html += `<div class="msg warn"><b>${result.unmatched.length} producto(s) no pudieron vincularse al catálogo:</b> ${result.unmatched.join(', ')}.</div>`;
-      if (registration.failed.length) html += `<div class="msg err"><b>No pude registrar automáticamente:</b> ${registration.failed.join('; ')}.</div>`;
-      if (result.withoutStock) html += `<div class="msg info">${result.withoutStock} renglón(es) no tenían una cantidad de inventario y se dejaron sin dato.</div>`;
-      summary.innerHTML = html;
-    } catch (err) {
-      PARSED_INVENTORY = null;
-      summary.innerHTML = `<div class="msg err">${err.message}</div>`;
-    }
-  };
-  reader.readAsText(file, 'UTF-8');
-}
-
-function flagStrongSaleDays(days) {
-  const ventas = days.map(d => d.venta).sort((a, b) => a - b);
-  const n = ventas.length;
-  const mediana = n % 2 ? ventas[(n - 1) / 2] : (ventas[n / 2 - 1] + ventas[n / 2]) / 2;
-  const umbral = mediana * 1.5;
-  days.forEach(d => { d.flag = n >= 3 && mediana > 0 && d.venta >= umbral; });
-}
-
-function renderMultiDayTable() {
-  document.querySelector('#tblMultiDay tbody').innerHTML = PARSED_DAYS.map(d => `
-    <tr data-date="${d.date}" class="${d.flag ? 'row-flag' : ''}">
-      <td>${d.date}${d.flag ? '<span class="badge-flag">⚡ venta fuerte</span>' : ''}</td>
-      <td class="num">${d.tickets.length}</td><td class="num">${money(d.venta)}</td>
-      <td><select class="mdSport">
-        <option value="futbol">Fútbol</option><option value="beisbol">Béisbol / Softbol</option><option value="otro" selected>Otro</option>
-      </select></td>
-      <td><select class="mdCategoria">
-        <option value="evento_especial">Evento especial</option><option value="dia_partido">Día de partido</option><option value="entrenamiento_normal" selected>Entrenamiento normal</option>
-      </select></td>
-      <td><input type="text" class="mdEvento" placeholder="opcional" style="min-width:140px"></td>
-      <td class="mdTags">${eventTagChecks('mdTag')}</td>
-    </tr>`).join('');
-}
-
-function wireApplyAll() {
-  document.getElementById('btnApplyAll').addEventListener('click', () => {
-    const sport = document.getElementById('mdAllSport').value;
-    const categoria = document.getElementById('mdAllCategoria').value;
-    const evento = document.getElementById('mdAllEvento').value.trim();
-    const tags = checkedTags(document.getElementById('mdAllTags'));
-    document.querySelectorAll('#tblMultiDay tbody tr').forEach(tr => {
-      tr.querySelector('.mdSport').value = sport;
-      tr.querySelector('.mdCategoria').value = categoria;
-      if (evento) tr.querySelector('.mdEvento').value = evento;
-      setCheckedTags(tr.querySelector('.mdTags'), tags);
-    });
-  });
-  document.getElementById('btnApplyFlagged').addEventListener('click', () => {
-    const sport = document.getElementById('mdFlagSport').value;
-    const categoria = document.getElementById('mdFlagCategoria').value;
-    const evento = document.getElementById('mdFlagEvento').value.trim();
-    const tags = checkedTags(document.getElementById('mdFlagTags'));
-    document.querySelectorAll('#tblMultiDay tbody tr.row-flag').forEach(tr => {
-      tr.querySelector('.mdSport').value = sport;
-      tr.querySelector('.mdCategoria').value = categoria;
-      if (evento) tr.querySelector('.mdEvento').value = evento;
-      setCheckedTags(tr.querySelector('.mdTags'), tags);
-    });
-  });
-}
-
-function ticketIdentity(ticket) {
-  return `${ticket.ticket_number || ''}|${new Date(ticket.ts).toISOString()}`;
-}
-
-async function insertTicketsForDay(dayId, tickets) {
-  if (!tickets || !tickets.length) return { inserted: 0, skipped: 0, moved: 0, misplaced: 0 };
-  const { data: existing, error: readErr } = await supabase.from('tickets')
-    .select('ticket_number,ts')
-    .eq('sale_day_id', dayId);
-  if (readErr) throw new Error('No pude revisar los tickets existentes: ' + readErr.message);
-  const existingKeys = new Set((existing || []).map(ticketIdentity));
-  const candidates = tickets.filter(t => !existingKeys.has(ticketIdentity(t)));
-  if (!candidates.length) return { inserted: 0, skipped: tickets.length, moved: 0, misplaced: 0 };
-
-  // También busca el mismo ticket en otros días. Esto repara importaciones
-  // antiguas donde una venta nocturna se guardó al día siguiente por UTC.
-  const globalMatches = [];
-  const timestamps = [...new Set(candidates.map(ticket => ticket.ts))];
-  for (let i = 0; i < timestamps.length; i += 100) {
-    const { data, error } = await supabase.from('tickets')
-      .select('id,sale_day_id,ticket_number,ts')
-      .in('ts', timestamps.slice(i, i + 100));
-    if (error) throw new Error('No pude revisar tickets en otras fechas: ' + error.message);
-    globalMatches.push(...(data || []));
-  }
-  const byIdentity = new Map();
-  globalMatches.forEach(ticket => {
-    const key = ticketIdentity(ticket);
-    if (!byIdentity.has(key)) byIdentity.set(key, []);
-    byIdentity.get(key).push(ticket);
-  });
-
-  const pending = [];
-  let moved = 0, misplaced = 0;
-  for (const ticket of candidates) {
-    const elsewhere = (byIdentity.get(ticketIdentity(ticket)) || []).find(row => row.sale_day_id !== dayId);
-    if (!elsewhere) { pending.push(ticket); continue; }
-    if (CURRENT_PROFILE?.role === 'admin') {
-      const { error } = await supabase.from('tickets').update({ sale_day_id: dayId }).eq('id', elsewhere.id);
-      if (error) throw new Error('No pude corregir la fecha de un ticket existente: ' + error.message);
-      moved++;
-    } else {
-      misplaced++;
-    }
-  }
-  if (!pending.length) return { inserted: 0, skipped: tickets.length - moved - misplaced, moved, misplaced };
-
-  const ticketRows = pending.map(t => ({
-    sale_day_id: dayId, ticket_number: t.ticket_number, ts: t.ts,
-    amount: t.amount, payment_type: t.payment_type, raw_description: t.raw_description
-  }));
-  const { data: insertedTickets, error: tErr } = await supabase.from('tickets').insert(ticketRows).select('id');
-  if (tErr) throw new Error('Error guardando tickets: ' + tErr.message);
-
-  const itemRows = [];
-  insertedTickets.forEach((row, i) => {
-    pending[i].items.forEach(it => {
-      itemRows.push({ ticket_id: row.id, product_id: it.product_id, product_name_raw: it.raw, qty: it.qty });
-    });
-  });
-  if (itemRows.length) {
-    const { error: iErr } = await supabase.from('ticket_items').insert(itemRows);
-    if (iErr) throw new Error('Error guardando productos de los tickets: ' + iErr.message);
-  }
-  return { inserted: pending.length, skipped: tickets.length - pending.length - moved - misplaced, moved, misplaced };
-}
-
-function normalizedTime(value) {
-  return String(value || '').slice(0, 5);
-}
-
-async function syncGamesForDay(dayId, games, rate) {
-  if (!games.length) return { inserted: 0, updated: 0, unchanged: 0 };
-  const { data: existing, error: readErr } = await supabase.from('games')
-    .select('id,start_time,cars_parked,cars_charged,parking_rate,charges_parking,notes')
-    .eq('sale_day_id', dayId);
-  if (readErr) throw new Error('No pude revisar el estacionamiento existente: ' + readErr.message);
-
-  let inserted = 0, updated = 0, unchanged = 0;
-  for (const game of games) {
-    const payload = {
-      sale_day_id: dayId, start_time: game.hora, cars_parked: game.ap, cars_charged: game.ac,
-      parking_rate: rate, charges_parking: game.cobra, notes: game.nota || null
-    };
-    const current = (existing || []).find(g => normalizedTime(g.start_time) === normalizedTime(game.hora));
-    if (!current) {
-      const { error } = await supabase.from('games').insert(payload);
-      if (error) throw new Error('Error guardando partidos: ' + error.message);
-      inserted++;
-      continue;
-    }
-    const same = Number(current.cars_parked) === game.ap
-      && Number(current.cars_charged) === game.ac
-      && Number(current.parking_rate) === rate
-      && Boolean(current.charges_parking) === game.cobra
-      && (current.notes || '') === (game.nota || '');
-    if (same) { unchanged++; continue; }
-    if (CURRENT_PROFILE?.role !== 'admin') {
-      throw new Error(`Ya existe un partido a las ${game.hora}. Pide a un administrador que actualice sus datos de estacionamiento.`);
-    }
-    const { sale_day_id, ...changes } = payload;
-    const { error } = await supabase.from('games').update(changes).eq('id', current.id);
-    if (error) throw new Error('Error actualizando el partido de las ' + game.hora + ': ' + error.message);
-    updated++;
-  }
-  return { inserted, updated, unchanged };
-}
-
-async function syncInventoryForDay(dayId, rows) {
-  if (!rows.length) return { inserted: 0, updated: 0, unchanged: 0 };
-  const { data: existing, error: readErr } = await supabase.from('inventory_counts')
-    .select('id,product_id,physical_count')
-    .eq('sale_day_id', dayId);
-  if (readErr) throw new Error('No pude revisar el inventario existente: ' + readErr.message);
-
-  const byProduct = new Map((existing || []).map(row => [row.product_id, row]));
-  const inserts = [];
-  let updated = 0, unchanged = 0;
-  for (const row of rows) {
-    const current = byProduct.get(row.product_id);
-    if (!current) { inserts.push(row); continue; }
-    if (Number(current.physical_count) === Number(row.physical_count)) { unchanged++; continue; }
-    const { error } = await supabase.from('inventory_counts')
-      .update({ physical_count: row.physical_count })
-      .eq('id', current.id);
-    if (error) throw new Error('No pude actualizar un conteo existente. Un administrador debe corregir inventarios ya guardados: ' + error.message);
-    updated++;
-  }
-  if (inserts.length) {
-    const { error } = await supabase.from('inventory_counts').insert(inserts);
-    if (error) throw new Error('Error guardando conteo de inventario: ' + error.message);
-  }
-  return { inserted: inserts.length, updated, unchanged };
-}
-
-async function onSubmit(e) {
-  e.preventDefault();
-  const btn = document.getElementById('btnSave');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Guardando...';
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (PARSED_DAYS && PARSED_DAYS.length > 1) {
-      await submitMultiDay(session);
-    } else {
-      await submitSingleDay(session);
-    }
-    const profile = await getCurrentProfile();
-    loadDays(profile);
-  } catch (err) {
-    msg('err', err.message);
-  } finally {
-    btn.disabled = false; btn.textContent = PARSED_DAYS && PARSED_DAYS.length > 1 ? `Guardar ${PARSED_DAYS.length} días` : 'Guardar día';
-  }
-}
-
-async function submitSingleDay(session) {
-  const date = document.getElementById('fDate').value;
-  const sport = document.getElementById('fSport').value;
-  const day_type = document.getElementById('fDayCategory').value;
-  const event_name = document.getElementById('fEventName').value.trim() || null;
-  const event_tags = day_type === 'evento_especial' ? checkedTags(document.getElementById('fEventTags')) : [];
-  const rate = parseFloat(document.getElementById('fRate').value) || 0;
-  const notes = document.getElementById('fNotes').value.trim();
-  const games = getGames();
-
-  const dayPayload = {
-    date, sport, day_type, event_name, notes: notes || null,
-    status: 'submitted', created_by: session.user.id
-  };
-  if (event_tags.length) dayPayload.event_tags = event_tags;
-  let day = await findDayByDate(date);
-  const existingDay = Boolean(day);
-  if (!day) {
-    const { data, error: dayErr } = await supabase.from('sale_days').insert(dayPayload).select().single();
-    if (dayErr) {
-      const detail = /event_tags/i.test(dayErr.message)
-        ? 'Falta activar las etiquetas en Supabase con el archivo etiquetas_evento.sql.'
-        : dayErr.message;
-      throw new Error('No pude crear el día: ' + detail);
-    }
-    day = data;
-  }
-
-  const gameResult = await syncGamesForDay(day.id, games, rate);
-  const ticketResult = await insertTicketsForDay(day.id, PARSED_TICKETS);
-
-  const invRows = [...document.querySelectorAll('.invCount')]
-    .filter(inp => inp.value !== '')
-    .map(inp => ({ sale_day_id: day.id, product_id: inp.dataset.pid, physical_count: parseInt(inp.value) }));
-  const inventoryResult = await syncInventoryForDay(day.id, invRows);
-
-  const details = [];
-  if (existingDay) details.push('se conservaron las ventas existentes');
-  if (gameResult.inserted) details.push(`${gameResult.inserted} partido(s) agregado(s)`);
-  if (gameResult.updated) details.push(`${gameResult.updated} partido(s) actualizado(s)`);
-  if (gameResult.unchanged) details.push(`${gameResult.unchanged} partido(s) ya estaban iguales`);
-  if (ticketResult.inserted) details.push(`${ticketResult.inserted} ticket(s) nuevo(s)`);
-  if (ticketResult.skipped) details.push(`${ticketResult.skipped} ticket(s) repetido(s) omitido(s)`);
-  if (ticketResult.moved) details.push(`${ticketResult.moved} ticket(s) corregido(s) desde una fecha equivocada`);
-  if (ticketResult.misplaced) details.push(`${ticketResult.misplaced} ticket(s) ya existen en otra fecha; un administrador debe corregirlos`);
-  if (inventoryResult.inserted) details.push(`${inventoryResult.inserted} existencia(s) importada(s)`);
-  if (inventoryResult.updated) details.push(`${inventoryResult.updated} existencia(s) actualizada(s)`);
-  if (inventoryResult.unchanged) details.push(`${inventoryResult.unchanged} existencia(s) ya estaban iguales`);
-  msg('ok', `Día ${date} guardado correctamente${details.length ? ': ' + details.join(', ') : ''}.`);
-  resetForm();
-}
-
-async function submitMultiDay(session) {
-  const rows = [...document.querySelectorAll('#tblMultiDay tbody tr')];
-  const results = [];
-  for (const tr of rows) {
-    const date = tr.dataset.date;
-    const sport = tr.querySelector('.mdSport').value;
-    const day_type = tr.querySelector('.mdCategoria').value;
-    const event_name = tr.querySelector('.mdEvento').value.trim() || null;
-    const event_tags = day_type === 'evento_especial' ? checkedTags(tr.querySelector('.mdTags')) : [];
-    const dayData = PARSED_DAYS.find(d => d.date === date);
-    try {
-      const dayPayload = { date, sport, day_type, event_name, status: 'submitted', created_by: session.user.id };
-      if (event_tags.length) dayPayload.event_tags = event_tags;
-      let day = await findDayByDate(date);
-      const merged = Boolean(day);
-      if (!day) {
-        const { data, error: dayErr } = await supabase.from('sale_days').insert(dayPayload).select().single();
-        if (dayErr) throw new Error(/event_tags/i.test(dayErr.message)
-          ? 'Falta activar las etiquetas en Supabase con el archivo etiquetas_evento.sql.'
-          : dayErr.message);
-        day = data;
-      }
-      const ticketResult = await insertTicketsForDay(day.id, dayData.tickets);
-      results.push({ date, ok: true, merged, ticketResult });
-    } catch (err) {
-      results.push({ date, ok: false, error: err.message });
-    }
-  }
-  const okCount = results.filter(r => r.ok).length;
-  const failed = results.filter(r => !r.ok);
-  let html = `<div class="msg ${failed.length ? 'warn' : 'ok'}"><b>${okCount} de ${results.length} días guardados.</b></div>`;
-  if (failed.length) {
-    html += `<div class="msg err">No se pudieron guardar: ${failed.map(f => `${f.date} (${f.error})`).join('; ')}.</div>`;
-  }
-  document.getElementById('msgBox').innerHTML = html;
-  if (okCount > 0) resetForm();
-}
-
-function resetForm() {
-  document.getElementById('formDay').reset();
-  document.getElementById('fDate').value = localISODate();
-  updateDayLabel();
-  document.getElementById('games').innerHTML = ''; addGame();
-  document.getElementById('csvSummary').innerHTML = '';
-  document.getElementById('inventoryCsvSummary').innerHTML = '';
-  document.getElementById('cardMultiDay').classList.add('hide');
-  document.getElementById('cardInv').classList.remove('hide');
-  document.getElementById('btnSave').textContent = 'Guardar día';
-  PARSED_TICKETS = null;
-  PARSED_DAYS = null;
-  PARSED_INVENTORY = null;
-  checkExistingDate();
-}
-
-async function loadDays(profile) {
-  const { data, error } = await supabase
-    .from('sale_days')
-    .select('id, date, sport, status, created_by, profiles(full_name), tickets(amount)')
-    .order('date', { ascending: false })
-    .limit(20);
-  const tbody = document.querySelector('#tblDays tbody');
-  if (error) { tbody.innerHTML = `<tr><td colspan="6">No pude cargar el historial.</td></tr>`; return; }
-  if (!data.length) { tbody.innerHTML = `<tr><td colspan="6">Todavía no hay días capturados.</td></tr>`; return; }
-  tbody.innerHTML = data.map(d => {
-    const venta = (d.tickets || []).reduce((s, t) => s + Number(t.amount), 0);
-    return `<tr>
-      <td>${d.date}</td><td>${d.sport || '—'}</td>
-      <td class="num">${(d.tickets || []).length}</td><td class="num">${money(venta)}</td>
-      <td><span class="chip ${d.status}">${d.status}</span></td>
-      <td>${d.profiles ? d.profiles.full_name || '—' : '—'}</td>
-    </tr>`;
-  }).join('');
-}
-
-init();
-</script>
-</body>
+    <script type="module" src="lib/operador.js"></script>
+  </body>
 </html>

@@ -218,6 +218,22 @@ tr.row-flag td{background:var(--amber-soft)}
 }
 
 .hide{display:none !important}
+.correction-entry{padding:16px 0;border-bottom:1px solid var(--line)}
+.correction-entry p{margin:6px 0}.correction-entry textarea{display:block;width:100%;max-width:620px}
+#correctionPanel{margin-top:16px}#correctionPanel fieldset{margin:12px 0;padding:12px;border:1px solid var(--line)}
+#corPreview{margin:12px 0}#tblPrediction input:disabled{opacity:.55}
+.planner-heading{margin:24px 0 18px;max-width:740px}.planner-heading h2{font-size:32px;margin:4px 0 10px}
+.planner-heading p,.planner-card section>p{color:var(--muted);line-height:1.6}
+.planner-card{max-width:760px;padding:28px}.planner-card .field{max-width:440px;margin-top:20px}
+.planner-card h3{font-size:24px;margin:24px 0 12px}.planner-card h3:focus,.planner-results h3:focus{outline:none}
+.planner-progress{display:flex;gap:6px;flex-wrap:wrap;list-style:none;padding:0;margin:16px 0 24px;counter-reset:planner}
+.planner-progress li{counter-increment:planner;padding:8px 10px;border-radius:7px;background:var(--bg);color:var(--muted);font-size:13px}
+.planner-progress li:before{content:counter(planner) ". ";font-weight:700}.planner-progress .current{background:#d4efcb;color:#163c24;font-weight:700}
+.planner-actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px}.planner-actions .btn:last-child{margin-left:auto}
+.planner-review{margin:20px 0}.planner-review>div{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.planner-review dt{font-weight:700}.planner-review dd{margin:0;overflow-wrap:anywhere}.planner-error{color:#a22920;min-height:24px}
+.planner-results{margin-top:16px}#plannerEdit{margin-top:12px}#planReviewed{flex-shrink:0}
+@media(max-width:600px){.planner-card{padding:18px}.planner-progress{gap:4px}.planner-progress li{font-size:12px;padding:7px}.planner-review>div{grid-template-columns:80px 1fr}.planner-heading h2{font-size:28px}}
 
 @media(max-width:760px){
   .topbar{position:relative}
@@ -234,3 +250,6 @@ tr.row-flag td{background:var(--amber-soft)}
   .brand-mark{width:42px;height:42px}
   .card{padding:16px}
 }
+[hidden]{display:none!important}
+.msg[role="status"]:empty{display:none}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--brand-dark);outline-offset:3px}

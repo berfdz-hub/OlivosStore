@@ -2,3 +2,8 @@
 Thumbs.db
 *.log
 receipts-by-item-*.csv
+node_modules/
+.pnpm-store/
+.env*
+test-results/
+dist/
