@@ -162,7 +162,56 @@ test("failed report queries keep reports hidden and expose a retry message", asy
     s.document.getElementById("globalMsg").textContent,
     /no disponible.*Offline/,
   );
-  assert([...s.document.querySelectorAll(".pane")].every((p) => p.hidden));
+  assert(
+    [...s.document.querySelectorAll(".pane")].every(
+      (p) => p.hidden === (p.id !== "pane-jornadas"),
+    ),
+  );
+});
+
+test("history batches load concurrently without losing rows, order or query failures", async () => {
+  let active = 0,
+    peak = 0,
+    fail = false;
+  const client = {
+    from() {
+      return {
+        select() {
+          return this;
+        },
+        in(column, ids) {
+          this.ids = ids;
+          return this;
+        },
+        order() {
+          return this;
+        },
+        async range(offset) {
+          active++;
+          peak = Math.max(peak, active);
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          active--;
+          return fail
+            ? { error: { message: "Incomplete history" } }
+            : { data: offset ? [] : this.ids.map((id) => ({ id })) };
+        },
+      };
+    },
+  };
+  const s = screen("reportes", { supabase: client });
+  const ids = Array.from({ length: 401 }, (_, i) => String(i));
+  s.ctx.ids = ids;
+  const rows = await s.run("selectAllIn('tickets','id','sale_day_id',ids)");
+  assert.deepEqual(
+    Array.from(rows, (r) => r.id),
+    ids,
+  );
+  assert.equal(peak, 4);
+  fail = true;
+  await assert.rejects(
+    () => s.run("selectAllIn('tickets','id','sale_day_id',ids)"),
+    /Incomplete history/,
+  );
 });
 test("classification keeps Club Puebla tags independent of day category", () => {
   const before = dayMetadata({
