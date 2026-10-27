@@ -43,7 +43,7 @@ Aplicar primero seguridad es independiente del resto de la actualización. Las m
 
 ## Navegación
 
-Inicio muestra los últimos siete días y pendientes, independiente de los filtros de resultados. Registrar reúne días, correcciones y existencias; Capturar día tiene la misma navegación. Compras contiene una sola recomendación y las propuestas guardadas. Resultados conserva resumen, calendario, productos, comparaciones, venta por hora, combos y estacionamiento. Catálogo y usuarios están en Administración. Los permisos y las tres cuentas existentes no cambian. Los enlaces antiguos de vistas operativa/guiada y lista de compras apuntan a Inicio o Compras.
+Jornadas reúne el calendario, las actividades y el acceso a la captura de ventas y correcciones. Compras guía fecha, actividades y lista de compra; Inventario reúne conteos y movimientos. Reportes conserva resumen, productos, comparaciones, venta por hora, combos y estacionamiento. Catálogo y usuarios están en Administración. Los permisos y las tres cuentas existentes no cambian. Los enlaces antiguos de Inicio y vistas operativa/guiada apuntan a Jornadas.
 
 ## Preparar una compra
 
@@ -74,7 +74,7 @@ Cada solicitud y decisión conserva autor, hora, motivo, valores antes/después 
 El respaldo del proveedor y una restauración real deben verificarse desde el panel administrativo. Las pruebas locales de migraciones y restauración de PGlite no certifican por sí solas el respaldo de Supabase. No revertir una migración borrando columnas con datos nuevos; conservar seguridad y corregir mediante una migración posterior.
 
 
-## Jornadas y calendario — preparación 2026102603
+## Jornadas y calendario — publicación 2026102603
 
 La navegación principal tiene Jornadas, Compras, Inventario y Reportes. Las rutas anteriores Inicio y Calendario abren Jornadas. En computadora el mes y el detalle de fecha aparecen juntos; en celular comienza con una lista de fechas con actividades y permite abrir el mes completo o elegir cualquier fecha.
 
@@ -84,4 +84,6 @@ Compras incorpora lo agendado, permite excluir o ajustar solo para esa compra y 
 
 Capturar una nueva jornada exige confirmar las actividades reales. Las existentes se corrigen mediante el flujo con historial; agregar recibos conserva su clasificación. El conteo tiene una entrada propia desde Inventario, admite búsqueda e importación y no crea días de venta. Productos nuevos en un archivo de existencias deben darse de alta primero en Catálogo. La existencia incluye esos conteos y descuenta ventas posteriores.
 
-Estado: preparado en la rama codex/jornadas-calendar-ui. No aplicar la migración ni publicar esta versión hasta revisar el flujo con el personal. Antes de publicar: respaldo de producción comprobado, migración y prueba de permisos, agenda mixta, fecha vacía, copia, cancelación con historial, compra con extras, cambio de agenda con compra abierta, captura real y conteo independiente. La vista local usa datos sintéticos; las pruebas SQL ejecutan la migración real en PGlite.
+Publicado con autorización del propietario el 26 de octubre de 2026 en https://olivos-store.vercel.app. Se exportó y restauró el esquema público y sus datos antes de aplicar la migración transaccional con verificación del respaldo. Las pruebas de funciones en producción se ejecutaron dentro de una transacción revertida: calendario, edición, cancelación e historial, copia, reintentos, rechazo de una compra con agenda desactualizada y conteo independiente. Se conservaron 2,119 tickets, 3,555 artículos, 122 días y las tres cuentas administradoras. El respaldo de aplicación no incluye Auth ni Storage.
+
+La revisión en navegador cubre escritorio y anchos móviles de 390 y 320 píxeles; no sustituye una prueba en un dispositivo físico. Jornadas carga antes que el historial, las lecturas se hacen en lotes paralelos limitados y las compras se muestran como tarjetas en celular. Las 65 pruebas automatizadas, auditorías de DOM/importación y compilación pasan. La vista local sigue usando datos sintéticos; no captura ventas reales.

@@ -288,3 +288,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   #tblPrediction summary{min-height:32px;padding:8px 0}
   #tblPrediction .manual-quantity input{width:100%;min-height:44px}
 }
+@media screen and (max-width:380px){
+  .activity-shortcuts{grid-template-columns:1fr}
+}
