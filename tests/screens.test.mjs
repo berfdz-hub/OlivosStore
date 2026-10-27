@@ -36,6 +36,7 @@ import {
   reviewedPurchase,
 } from "../lib/purchase-review.js";
 import { dayMetadata, correctionDiff } from "../lib/corrections.js";
+import { parkingRows } from "../lib/parking.js";
 import {
   initGroupEditor,
   validateGroups,
@@ -84,6 +85,7 @@ function screen(name, globals = {}) {
     evaluatePlans,
     monetaryBreakdown,
     inventoryAt,
+    parkingRows,
     itemProductKey,
     businessDate,
     parseBusinessDate,

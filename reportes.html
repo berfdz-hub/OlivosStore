@@ -1326,6 +1326,38 @@
             <p class="hint" id="inventoryPlanNote"></p>
           </details>
         </div>
+        <div
+          class="inventory-view-tabs"
+          id="inventoryViewTabs"
+          role="tablist"
+          aria-label="Vista de inventario"
+        >
+          <button
+            type="button"
+            role="tab"
+            id="inventorySimpleTab"
+            data-inventory-view="simple"
+            aria-selected="true"
+            aria-controls="inventoryTablePanel"
+          >
+            Vista sencilla
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="inventoryExpandedTab"
+            data-inventory-view="expanded"
+            aria-selected="false"
+            aria-controls="inventoryTablePanel"
+            tabindex="-1"
+          >
+            Vista ampliada
+          </button>
+        </div>
+        <p class="hint" id="inventoryExpandedHint" hidden>
+          Unidades por producto. El conteo establece un saldo; el surtido suma
+          mercancía. Desliza la tabla para ver todas las columnas.
+        </p>
         <div class="inventory-layout" id="inventoryLayout">
           <section
             class="card inventory-list"
@@ -1338,17 +1370,25 @@
                 inactivos</label
               >
             </div>
-            <table id="tblCurrentStock">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Saldo estimado</th>
-                  <th>Comprar</th>
-                  <th>Último surtido</th>
-                </tr>
-              </thead>
-              <tbody id="inventoryProducts"></tbody>
-            </table>
+            <div
+              class="inventory-table-scroll"
+              id="inventoryTablePanel"
+              role="tabpanel"
+              aria-label="Existencias y últimos registros"
+              tabindex="0"
+            >
+              <table id="tblCurrentStock">
+                <thead id="inventoryTableHead">
+                  <tr>
+                    <th>Producto</th>
+                    <th>Saldo estimado</th>
+                    <th>Comprar</th>
+                    <th>Último surtido</th>
+                  </tr>
+                </thead>
+                <tbody id="inventoryProducts"></tbody>
+              </table>
+            </div>
           </section>
           <aside
             class="card inventory-detail"
@@ -1371,7 +1411,7 @@
               <div id="inventoryDetailStock"></div>
             </div>
             <p class="inventory-detail-note" id="inventoryDetailNote"></p>
-            <dl id="inventoryDetailFacts"></dl>
+            <section id="inventoryRecent" class="inventory-recent"></section>
             <div class="row-actions">
               <a
                 class="btn"
@@ -1403,6 +1443,7 @@
             </details>
             <details>
               <summary>Cálculo y comparación física</summary>
+              <dl id="inventoryDetailFacts"></dl>
               <div id="inventoryCalculation"></div>
             </details>
             <details id="inventoryAuditWrap">
@@ -1452,33 +1493,53 @@
 
       <div class="pane" id="pane-estacionamiento">
         <h2 class="section-title" style="margin-top: 20px">
-          ¿Más autos significa más venta?
+          Tienda + estacionamiento
         </h2>
         <p class="footnote" style="margin-top: 6px">
-          "Venta ventana ±" es la venta de la tienda entre 60 min antes y 150
-          min después del arranque de cada partido — no es correlación
-          estadística formal, solo referencia mientras se acumulan más partidos.
-          Ver
-          <a href="#" data-action="tab" data-tab-target="glosario">glosario</a>.
+          La tarifa es lo que se cobra a cada auto. Estacionamiento = tarifa ×
+          autos cobrados. El promedio por auto se divide entre todos los autos
+          del lote, incluidos los que no pagaron.
         </p>
-        <div id="parkingInsight"></div>
+        <div class="row-actions">
+          <a class="btn sec" href="operador.html?task=jornada#captureParking"
+            >Capturar autos y tarifa</a
+          >
+        </div>
         <div
           class="grid grid3"
           id="parkingCards"
           style="margin-top: 14px"
         ></div>
+        <details class="parking-method">
+          <summary>Cómo se calcula la venta de tienda por partido</summary>
+          <p>
+            Se usan los tickets desde 60 minutos antes hasta 150 minutos después
+            del inicio, recortando la ventana cuando comienza la del siguiente
+            partido. Es una estimación por horario: los tickets no identifican
+            qué auto compró. No se suma dos veces una venta. Si dos partidos
+            empiezan a la misma hora, su venta queda sin atribuir.
+          </p>
+          <p>
+            El total combinado suma tienda y estacionamiento, suponiendo que el
+            cobro de estacionamiento se registra por separado de los tickets de
+            tienda.
+          </p>
+          <div id="parkingInsight"></div>
+        </details>
         <div class="card" style="margin-top: 14px">
           <div class="scroll">
             <table id="tblParking">
               <thead>
                 <tr>
-                  <th>Fecha</th>
-                  <th>Hora</th>
+                  <th>Partido</th>
                   <th class="num">Autos (lote)</th>
                   <th class="num">Autos cobrados</th>
-                  <th class="num">Ingreso</th>
-                  <th class="num">Venta ventana ±</th>
-                  <th class="num">Venta/auto</th>
+                  <th class="num">Tarifa por auto</th>
+                  <th class="num">Venta tienda</th>
+                  <th class="num">Tienda por auto</th>
+                  <th class="num">+ Estacionamiento</th>
+                  <th class="num">Total combinado</th>
+                  <th class="num">Total por auto</th>
                 </tr>
               </thead>
               <tbody></tbody>

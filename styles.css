@@ -389,3 +389,44 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   .inventory-layout.detail-open{margin-top:0}
   #pane-inventario:has(.detail-open) .inventory-heading .row-actions{display:none}
 }
+
+/* Inventory history views and parking breakdown */
+.inventory-view-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-top:20px}
+.inventory-view-tabs button{min-height:44px;padding:10px 18px;background:transparent;border:0;border-bottom:3px solid transparent;color:var(--muted);font:600 14px 'Source Sans 3',sans-serif;cursor:pointer}
+.inventory-view-tabs [aria-selected=true]{border-bottom-color:var(--brand-dark);color:var(--brand-dark)}
+.inventory-view-tabs button:focus-visible,.inventory-table-scroll:focus-visible{outline:2px solid var(--brand-dark);outline-offset:2px}
+.inventory-table-scroll{overflow:auto;max-width:100%;overscroll-behavior-x:contain}
+.inventory-layout.expanded-view{grid-template-columns:minmax(0,1fr)}
+.inventory-layout.expanded-view.detail-open>.inventory-list{display:none}
+#pane-inventario .expanded-view table{min-width:1160px;border-collapse:separate;border-spacing:0}
+#pane-inventario .expanded-view .inventory-list th,#pane-inventario .expanded-view .inventory-list td{padding:12px;min-width:110px;white-space:normal}
+#pane-inventario .expanded-view .inventory-list th:first-child,#pane-inventario .expanded-view .inventory-list td:first-child{position:sticky;left:0;width:185px;min-width:185px;max-width:185px;z-index:1;background:#fff;border-right:1px solid var(--line)}
+#pane-inventario .expanded-view .inventory-list th:first-child{background:#f2f5f1}
+.inventory-recent{border-top:1px solid var(--line);padding-top:16px;margin-top:16px}
+.inventory-recent h4{font-size:16px;margin:0 0 12px}
+.inventory-recent-facts>div{display:flex;justify-content:space-between;align-items:start;gap:16px;padding:10px 0;border-bottom:1px solid #edf0eb}
+.inventory-recent-facts dt{font-size:13px;color:var(--muted)}
+.inventory-recent-facts dd{margin:0;text-align:right;font-size:14px}
+.inventory-recent-facts dd span{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+.inventory-balance-flow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 10px;margin:16px 0 8px;background:#f2f6ef;border-radius:8px}
+.inventory-balance-flow div{min-width:0;flex:1;text-align:center}
+.inventory-balance-flow div span{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}
+.inventory-balance-flow b{font-size:15px}
+.parking-car-count{display:flex;gap:12px;justify-content:space-between;align-items:center;margin:12px 0}
+.parking-car-count b{font-size:22px}.parking-car-count span{font-size:13px;color:var(--muted)}
+.parking-rate{font-size:14px;display:flex;justify-content:space-between;gap:12px;background:#f2f5f1;padding:8px 10px;border-radius:6px}
+.parking-totals{margin:12px 0}.parking-totals>div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;font-size:15px}.parking-totals dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}.parking-totals .parking-total{border-top:1px solid var(--line);font-weight:700;font-size:18px;margin-top:6px;padding-top:12px}
+.parking-per-car{background:#f2f6ef;padding:12px;border-radius:8px}.parking-per-car>b{font-size:12px;color:var(--muted)}.parking-per-car>div{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:13px;margin-top:10px}.parking-per-car strong{text-align:right}.parking-method{margin-top:18px;font-size:14px}.parking-method summary{cursor:pointer;min-height:44px;padding:12px 0}.parking-method p{margin:12px 0;color:var(--muted)}
+#tblParking{min-width:1050px}#tblParking td .tiny{display:block}
+@media(max-width:600px){
+ #pane-inventario .expanded-view .inventory-list thead{display:table-header-group}
+ #pane-inventario .expanded-view .inventory-list tbody{display:table-row-group}
+ #pane-inventario .expanded-view .inventory-list tr{display:table-row;padding:0}
+ #pane-inventario .expanded-view .inventory-list td{display:table-cell;border-bottom:1px solid var(--line);text-align:left}
+ #pane-inventario .expanded-view .inventory-list td::before{display:none}
+ #pane-inventario .expanded-view .inventory-list td:first-child,#pane-inventario .expanded-view .inventory-list th:first-child{min-width:145px;max-width:145px;width:145px}
+ #pane-inventario .expanded-view .inventory-list td:last-child{padding:12px;border-top:0}
+ .inventory-balance-flow{padding:12px 6px;gap:4px}.inventory-balance-flow b{font-size:13px}
+ #parkingCards{grid-template-columns:minmax(0,1fr)}
+}
+.inventory-layout.expanded-view .inventory-detail{width:100%;max-width:800px;justify-self:center;box-sizing:border-box}

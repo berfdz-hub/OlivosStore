@@ -25,6 +25,10 @@ for (const name of [
 await db.exec(
   "grant all on all tables in schema public to anon,authenticated;",
 );
+// Match Supabase defaults for views created by subsequent migrations.
+await db.exec(
+  "alter default privileges in schema public grant all on tables to anon,authenticated",
+);
 const admin = "00000000-0000-0000-0000-000000000001",
   operator = "00000000-0000-0000-0000-000000000002",
   inactive = "00000000-0000-0000-0000-000000000003";
@@ -43,6 +47,7 @@ for (const name of [
   "2026102602_activity_planner.sql",
   "2026102603_journeys.sql",
   "2026102604_inventory_clarity.sql",
+  "2026102701_read_only_views.sql",
 ]) {
   try {
     await db.exec(
@@ -164,7 +169,33 @@ for (const table of [
   );
 await assert.rejects(() => save([]), /permission denied/);
 await db.exec("reset role");
+for (const view of ["products_view", "ticket_items_view", "tickets_view"]) {
+  for (const privilege of ["INSERT", "UPDATE", "DELETE"]) {
+    const check = await db.query(
+      "select has_table_privilege('authenticated',$1,$2) allowed",
+      [view, privilege],
+    );
+    assert.equal(check.rows[0].allowed, false, `${view} must be read-only`);
+  }
+}
+await assert.rejects(
+  () =>
+    as(operator, () =>
+      db.query("update products_view set sell_price=sell_price+1"),
+    ),
+  /permission denied/,
+);
 await db.exec("update app_settings set operators_see_costs=false");
+const hiddenProducts = await as(operator, () =>
+  db.query("select cost_price from products_view"),
+);
+assert(hiddenProducts.rows.length > 0);
+assert(hiddenProducts.rows.every((r) => r.cost_price === null));
+assert.equal(
+  (await as(inactive, () => db.query("select * from products_view"))).rows
+    .length,
+  0,
+);
 const hidden = await as(operator, () =>
   db.query("select unit_cost from ticket_items_view"),
 );

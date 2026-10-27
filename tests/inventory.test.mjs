@@ -383,3 +383,63 @@ test("inventory filters separate estimated, negative and missing stock, while pr
     /No hay productos/,
   );
 });
+
+test("expanded inventory preserves filters and shows the receipt sequence in both table and detail", () => {
+  const { document, window } = page();
+  const h = history();
+  h.movements = [
+    {
+      id: "m",
+      product_id: "p",
+      qty: 30,
+      kind: "purchase",
+      occurred_at: "2026-10-26T16:00:00Z",
+    },
+  ];
+  h.tickets = [{ id: "t", ts: "2026-10-26T17:00:00Z" }];
+  h.items = [{ ticket_id: "t", product_id: "p", qty: 5 }];
+  const c = {
+    history: h,
+    products: [{ id: "p", name: "Agua", active: true }],
+    plans: [],
+    admin: false,
+  };
+  const source = JSON.stringify(c);
+  const ui = initInventoryView({
+    root: document,
+    context: () => c,
+    client: {},
+    refresh: async () => {},
+    onPurchase: () => {},
+  });
+  const click = (el) =>
+    el.dispatchEvent(new window.Event("click", { bubbles: true }));
+  ui.render();
+  click(document.getElementById("inventoryExpandedTab"));
+  assert.equal(
+    document
+      .getElementById("inventoryExpandedTab")
+      .getAttribute("aria-selected"),
+    "true",
+  );
+  assert.equal(document.querySelectorAll("#inventoryTableHead th").length, 9);
+  assert.match(
+    document.getElementById("inventoryProducts").textContent,
+    /45.*20.*\+30.*50.*5/s,
+  );
+  click(document.querySelector('[data-inventory-product="p"]'));
+  assert.match(
+    document.getElementById("inventoryRecent").textContent,
+    /Antes del surtido20 unid.*Recibimos30 unid.*Después del surtido50 unid/s,
+  );
+  click(document.getElementById("inventoryDetailClose"));
+  assert.equal(
+    document
+      .getElementById("inventoryExpandedTab")
+      .getAttribute("aria-selected"),
+    "true",
+  );
+  click(document.getElementById("inventorySimpleTab"));
+  assert.equal(document.querySelectorAll("#inventoryTableHead th").length, 4);
+  assert.equal(JSON.stringify(c), source);
+});
