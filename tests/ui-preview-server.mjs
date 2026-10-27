@@ -9,7 +9,7 @@ export const CONFIGURED=true;
 const previewRole=new URLSearchParams(location.search).get('role')==='operador'?'operador':'admin';
 const day='2026-10-05';
 const store={
- profiles:[{id:'admin',full_name:(previewRole==='admin'?'Administración':'Capturista')+' · prueba local',role:previewRole,active:true}],schema_versions:[{version:2026102703}],
+ profiles:[{id:'admin',full_name:(previewRole==='admin'?'Administración':'Capturista')+' · prueba local',role:previewRole,active:true}],schema_versions:[{version:2026102704}],
  products_view:[{id:'p1',name:'Agua 600 ml',category:'Bebidas',sell_price:20,cost_price:8,active:true},{id:'p2',name:'Agua 1500 ml',category:'Bebidas',sell_price:30,cost_price:12,active:true}],
  sale_days:[{id:'d1',date:day,sport:'futbol',status:'submitted',day_type:'evento_especial',event_name:'Partido de prueba',event_tags:['futbol'],created_by:'admin',profiles:{full_name:'Prueba local'},tickets:[{amount:100}]}],
  tickets_view:[{id:'t1',sale_day_id:'d1',ts:day+'T18:00:00Z',amount:100,receipt_type:'sale'}],
@@ -39,7 +39,7 @@ for(const [id,type,teamMode,games,qty] of [['sample3','futbol','club_puebla',1,3
 }
 store.tickets=store.tickets_view;
 for(const game of store.games){game.revision=1;if(game.start_time.length===5)game.start_time+=':00';}
-const previewKey='olivos-preview-parking-corrections-'+previewRole;
+const previewKey='olivos-preview-inventory-import-'+previewRole;
 try{const saved=JSON.parse(sessionStorage.getItem(previewKey)||'null');if(saved)Object.assign(store,saved);}catch{}
 addEventListener('pagehide',()=>sessionStorage.setItem(previewKey,JSON.stringify(store)));
 
@@ -73,7 +73,12 @@ if(name==='save_scheduled_activities'){
 if(name==='duplicate_scheduled_day'){
  if(store.scheduled_games.some(r=>r.date===p.p_target&&r.status!=='cancelled'))return{error:{message:'La fecha destino ya tiene actividades'}};
  store.scheduled_games.push(...store.scheduled_games.filter(r=>r.date===p.p_source&&r.status!=='cancelled').map(r=>({...r,id:crypto.randomUUID(),date:p.p_target,version:1})));return{data:['ok'],error:null};}
-if(name==='save_inventory_count'){store.inventory_counts.push(...p.p_counts.map(c=>({...c,id:crypto.randomUUID(),sale_day_id:null})));return{data:p.p_counts.length,error:null};}
+if(name==='save_inventory_count'){
+ for(const c of p.p_counts){
+  let product=store.products_view.find(x=>x.id===c.product_id||(c.external_ref&&x.external_ref===c.external_ref)||x.name===c.raw);
+  if(!product){product={id:crypto.randomUUID(),name:c.raw,category:c.category,sell_price:c.sell_price,cost_price:c.cost_price,external_ref:c.external_ref,active:true};store.products_view.push(product);}
+  store.inventory_counts.push({...c,product_id:product.id,id:crypto.randomUUID(),sale_day_id:null,created_by:'admin',created_at:new Date().toISOString()});
+ }return{data:p.p_counts.length,error:null};}
 if(name==='request_day_correction'){const id=crypto.randomUUID();store.day_corrections.push({id,day_id:p.p_day,requested_name:'Administración · prueba local',requested_by:'admin',requested_at:new Date().toISOString(),reason:p.p_reason,before_data:p.p_before,after_data:p.p_after,applied_immediately:true});Object.assign(store.sale_days.find(d=>d.id===p.p_day),p.p_after);return{data:{id,applied:true},error:null};}
 if(name==='review_day_correction'){store.correction_decisions.push({id:crypto.randomUUID(),correction_id:p.p_request,decided_name:'Administración · prueba local',decided_at:new Date().toISOString(),approved:p.p_approve,note:p.p_note});return{data:null,error:null};}
 if(name==='save_purchase_plan'){const id=crypto.randomUUID();store.purchase_plans.push({id,...p.p_plan,created_at:new Date().toISOString(),created_by:'admin'});return{data:id,error:null};}

@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 import { parseHTML } from "linkedom";
+import { inventoryCountRows } from "../lib/inventory-import.js";
 import { webcrypto } from "node:crypto";
 import { escapeHTML as H, selectAll, associateLabels } from "../lib/safe.js";
 import {
@@ -92,6 +93,7 @@ function screen(name, globals = {}) {
     normalizedName,
     parseReceipts,
     parseInventory,
+    inventoryCountRows,
     crypto: webcrypto,
     console,
     signOut: () => {},
@@ -131,30 +133,45 @@ test("all report renderers work and stored strings cannot create executable HTML
 });
 test("administrator catalog loads protected view costs and paginates without raw table access", async () => {
   const products = Array.from({ length: 501 }, (_, i) => ({
-    id: String(i), name: `Producto ${i}`, category: "Bebida",
-    cost_price: i === 500 ? null : 7.5, sell_price: 15, active: true,
-    perishable: false, storage_limit: 24, perishable_limit: null,
+    id: String(i),
+    name: `Producto ${i}`,
+    category: "Bebida",
+    cost_price: i === 500 ? null : 7.5,
+    sell_price: 15,
+    active: true,
+    perishable: false,
+    storage_limit: 24,
+    perishable_limit: null,
   }));
-  const s = screen("reportes", { supabase: {
-    from(table) {
-      return {
-        select() { return this; },
-        order() { return this; },
-        async range(from, to) {
-          return table === "products_view"
-            ? { data: products.slice(from, to + 1) }
-            : { error: { message: "permission denied for table products" } };
-        },
-      };
+  const s = screen("reportes", {
+    supabase: {
+      from(table) {
+        return {
+          select() {
+            return this;
+          },
+          order() {
+            return this;
+          },
+          async range(from, to) {
+            return table === "products_view"
+              ? { data: products.slice(from, to + 1) }
+              : { error: { message: "permission denied for table products" } };
+          },
+        };
+      },
     },
-  } });
+  });
   await s.run("loadCatalogFull()");
   const rows = s.document.querySelectorAll("#tblCatalog tbody tr");
   assert.equal(rows.length, 501);
   assert.equal(rows[0].querySelector(".edCost").value, "7.5");
   assert.equal(rows[500].querySelector(".edCost").value, "");
   assert.equal(rows[0].querySelector(".edStorage").value, "24");
-  assert.equal(rows[0].querySelector('[data-action="saveProduct"]').textContent, "Guardar");
+  assert.equal(
+    rows[0].querySelector('[data-action="saveProduct"]').textContent,
+    "Guardar",
+  );
 });
 
 test("operator preserves exact names in inventory text and input attributes", () => {
@@ -525,4 +542,32 @@ test("independent inventory searches products and retries a failed save with the
   assert.equal(requests[0].p.p_client_ref, requests[1].p.p_client_ref);
   assert.deepEqual(requests[0].p.p_counts, requests[1].p.p_counts);
   assert.equal(requests[1].p.p_counts[0].physical_count, 0);
+});
+
+test("selecting inventory only previews; saving includes new products and source file atomically", async () => {
+  let reader, saved;
+  class Reader {
+    constructor() { reader = this; }
+    readAsText() { this.readyState = 1; }
+  }
+  const s = screen("operador", { FileReader: Reader, supabase: {
+    rpc: async (name, args) => { saved = {name,args}; return {data:args.p_counts.length}; },
+  } });
+  s.run("INVENTORY_MODE=true;CATALOG=[{id:'p',name:'Agua 600 ml'}];reloadCatalog=async()=>{};resetForm=()=>{};onInventoryCsvChange({target:{files:[{name:'export_items (2).csv'}]}});");
+  reader.result = fs.readFileSync(new URL("fixture-inventory.csv",import.meta.url),'utf8');
+  reader.onload();
+  assert.equal(saved,undefined);
+  assert.equal(s.document.querySelectorAll('#tblInv input').length,8);
+  assert.match(s.document.getElementById('inventoryCsvSummary').textContent,/Se darán de alta al guardar/);
+  s.document.querySelector('[aria-label="Conteo de Powerade naranja"]').value='9';
+  s.document.querySelector('[aria-label="Conteo de Powerade naranja"]').dispatchEvent(new s.ctx.window.Event('input'));
+  s.document.getElementById('fCountAt').value=businessDate()+'T00:00';
+  await s.run('submitInventory()');
+  assert.equal(saved.name,'save_inventory_count');
+  assert.equal(saved.args.p_counts.length,8);
+  assert.equal(saved.args.p_counts.filter(c=>!c.product_id).length,7);
+  assert(saved.args.p_counts.every(c=>c.source_file==='export_items (2).csv'));
+  const edited=saved.args.p_counts.find(c=>c.raw==='Powerade naranja');
+  assert.equal(edited.physical_count,9);assert.equal(edited.count_source,'manual');
+  assert.match(s.document.getElementById('msgBox').textContent,/8 conteos guardados/);
 });
