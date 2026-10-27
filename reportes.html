@@ -288,31 +288,6 @@
 
       <div id="globalMsg"></div>
 
-      <section class="pane on" id="pane-inicio">
-        <h2>Tu tienda</h2>
-        <p id="homePeriod" class="footnote"></p>
-        <div class="kpis" id="homeKpis"></div>
-        <div class="home-actions">
-          <a href="operador.html" class="btn">Capturar día</a
-          ><button
-            class="btn sec"
-            data-action="tab"
-            data-tab-target="planificador"
-          >
-            Preparar compra
-          </button>
-        </div>
-        <div class="grid grid2">
-          <section class="card">
-            <h3>Qué necesita atención</h3>
-            <div id="homePending"></div>
-          </section>
-          <section class="card">
-            <h3>Próxima compra</h3>
-            <div id="homeNext"></div>
-          </section>
-        </div>
-      </section>
       <section class="pane" id="pane-registro">
         <h2>Registrar</h2>
         <p class="footnote">
@@ -595,6 +570,31 @@
           </div>
           <a class="btn sec" href="#registro">Ventas y correcciones</a>
         </div>
+        <section
+          class="journey-overview"
+          id="journeyOverview"
+          aria-label="Resumen de la tienda"
+          hidden
+        >
+          <h3>Tu tienda</h3>
+          <p id="homePeriod" class="footnote"></p>
+          <div class="kpis" id="homeKpis"></div>
+          <details class="journey-attention">
+            <summary id="homeAttentionLabel">
+              Pendientes y próxima compra
+            </summary>
+            <div class="grid grid2">
+              <section class="card">
+                <h3>Qué necesita atención</h3>
+                <div id="homePending"></div>
+              </section>
+              <section class="card">
+                <h3>Próxima compra</h3>
+                <div id="homeNext"></div>
+              </section>
+            </div>
+          </details>
+        </section>
         <div id="journeyMsg" role="status" aria-live="polite"></div>
         <div class="journey-layout">
           <section class="card journey-picker" aria-label="Calendario">
@@ -1165,105 +1165,252 @@
         </div>
       </div>
 
-      <div class="pane" id="pane-inventario">
+      <section class="pane" id="pane-inventario" aria-label="Inventario">
         <div class="journey-heading">
           <div>
             <h2 class="section-title">Inventario</h2>
-            <p>Registra lo que hay y lo que entra o sale de la tienda.</p>
+            <p id="inventoryStatus">Cargando productos…</p>
           </div>
-          <a class="btn" href="operador.html?task=inventario"
-            >Contar o importar existencias</a
-          >
-        </div>
-        <div class="card">
-          <h3>Registrar entrada o salida</h3>
-          <form id="formMovement">
-            <div class="grid grid3">
-              <div class="field">
-                <label for="moveProduct">Producto</label
-                ><select id="moveProduct" required></select>
-              </div>
-              <div class="field">
-                <label for="moveAt">Fecha y hora (Ciudad de México)</label
-                ><input type="datetime-local" id="moveAt" required />
-              </div>
-              <div class="field">
-                <label for="moveKind">Tipo</label
-                ><select id="moveKind">
-                  <option value="purchase">Compra recibida</option>
-                  <option value="waste">Merma</option>
-                  <option value="adjustment">Ajuste justificado</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="moveQty">Unidades (+ entrada, − salida)</label
-                ><input type="number" step="0.001" id="moveQty" required />
-              </div>
-              <div class="field">
-                <label for="moveNote">Motivo o referencia</label
-                ><input id="moveNote" required />
-              </div>
-            </div>
-            <button class="btn" id="btnMovement" type="submit">
-              Guardar movimiento
+          <div class="row-actions">
+            <a class="btn" href="operador.html?task=inventario"
+              >Contar existencias</a
+            ><button class="btn sec" type="button" id="inventoryReceipt">
+              Recibí mercancía
             </button>
-          </form>
+          </div>
         </div>
-        <h2 class="section-title" style="margin-top: 20px">
-          Inventario actual estimado
-        </h2>
-        <p class="footnote" style="margin-top: 6px">
-          Existencia estimada = último conteo + entradas y ajustes − salidas y
-          ventas posteriores. Los reembolsos restituyen unidades. Para validar
-          el sistema, captura físicamente 3 o 4 productos en la columna de
-          comprobación; la diferencia se calcula al instante y no modifica la
-          base de datos.
-        </p>
-        <div class="card" style="margin-top: 14px">
-          <div class="scroll">
+        <div
+          id="inventoryMessage"
+          role="status"
+          aria-live="polite"
+          hidden
+        ></div>
+        <div class="inventory-toolbar">
+          <div class="field">
+            <label for="inventoryProductSearch">Buscar producto</label
+            ><input
+              type="search"
+              id="inventoryProductSearch"
+              placeholder="Nombre del producto"
+            />
+          </div>
+          <div class="field">
+            <label for="inventoryPlan">Compra para una jornada</label
+            ><select id="inventoryPlan">
+              <option value="">Sin jornada seleccionada</option>
+            </select>
+          </div>
+          <button class="btn sec" type="button" id="inventoryPrepare">
+            Preparar / revisar compra
+          </button>
+        </div>
+        <p class="hint" id="inventoryPlanNote"></p>
+        <div class="inventory-layout" id="inventoryLayout">
+          <section
+            class="card inventory-list"
+            aria-label="Productos del inventario"
+          >
+            <div class="inventory-list-heading">
+              <span id="inventoryListCount"></span
+              ><label class="check-option"
+                ><input type="checkbox" id="inventoryInactive" /> Incluir
+                inactivos</label
+              >
+            </div>
             <table id="tblCurrentStock">
               <thead>
                 <tr>
                   <th>Producto</th>
-                  <th>Último conteo</th>
-                  <th class="num">Cantidad contada</th>
-                  <th class="num">Ventas posteriores</th>
-                  <th class="num">Existencia estimada</th>
-                  <th class="num">Comprobación física</th>
-                  <th class="num">Diferencia</th>
+                  <th>Tenemos</th>
+                  <th>Comprar</th>
+                  <th>Último surtido</th>
                 </tr>
               </thead>
-              <tbody></tbody>
+              <tbody id="inventoryProducts"></tbody>
             </table>
-          </div>
+          </section>
+          <aside
+            class="card inventory-detail"
+            id="inventoryDetail"
+            aria-labelledby="inventoryDetailTitle"
+            hidden
+          >
+            <div class="inventory-detail-heading">
+              <h3 id="inventoryDetailTitle"></h3>
+              <button
+                class="btn sec sm"
+                type="button"
+                id="inventoryDetailClose"
+              >
+                Volver a lista
+              </button>
+            </div>
+            <div class="inventory-stock">
+              <span>Tenemos</span><strong id="inventoryDetailStock"></strong>
+            </div>
+            <dl id="inventoryDetailFacts"></dl>
+            <div class="row-actions">
+              <a
+                class="btn"
+                id="inventoryCountProduct"
+                href="operador.html?task=inventario"
+                >Contar este producto</a
+              ><button
+                type="button"
+                class="btn sec"
+                id="inventoryReceiptProduct"
+              >
+                Registrar surtido
+              </button>
+            </div>
+            <details>
+              <summary>Compra para la jornada</summary>
+              <div id="inventoryProductPurchase"></div>
+            </details>
+            <details>
+              <summary>Conteos, surtidos y mermas</summary>
+              <ul
+                class="inventory-timeline"
+                id="inventoryProductMovements"
+              ></ul>
+            </details>
+            <details>
+              <summary>Ventas y devoluciones</summary>
+              <ul class="inventory-timeline" id="inventoryProductSales"></ul>
+            </details>
+            <details>
+              <summary>Cálculo y comparación física</summary>
+              <div id="inventoryCalculation"></div>
+            </details>
+            <details id="inventoryAuditWrap">
+              <summary>Quién lo cambió · bitácora</summary>
+              <ul class="inventory-timeline" id="inventoryAudit"></ul>
+            </details>
+          </aside>
         </div>
-        <h2 class="section-title" style="margin-top: 28px">
-          Historial de variaciones
-        </h2>
-        <p class="footnote" style="margin-top: 6px">
-          Solo aparecen productos con conteo físico capturado en el periodo.
-          Teórico = conteo anterior + entradas y ajustes − salidas y ventas.
-          Solo se evalúan conteos físicos comparables.
-        </p>
-        <div id="invMsg"></div>
-        <div class="card" style="margin-top: 14px">
-          <div class="scroll">
-            <table id="tblMerma">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Producto</th>
-                  <th class="num">Teórico</th>
-                  <th class="num">Físico</th>
-                  <th class="num">Diferencia</th>
-                  <th class="num">Valor</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
+        <div class="row-actions">
+          <button class="btn sec sm" type="button" id="inventoryWaste">
+            Registrar merma</button
+          ><button class="btn sec sm" type="button" id="inventoryAdjustment">
+            Ajuste justificado</button
+          ><a href="operador.html?task=inventario">Importar existencias</a>
         </div>
-      </div>
+        <section
+          class="card inventory-movement"
+          id="inventoryMovementPanel"
+          aria-labelledby="movementTitle"
+          hidden
+        >
+          <form id="formMovement">
+            <fieldset class="plain-fieldset" id="movementFields">
+              <div class="inventory-detail-heading">
+                <h3 id="movementTitle">Recibí mercancía</h3>
+                <button
+                  type="button"
+                  class="btn sec sm"
+                  id="inventoryMovementClose"
+                >
+                  Cerrar
+                </button>
+              </div>
+              <div class="grid grid2">
+                <div class="field">
+                  <label for="moveProduct">Producto</label
+                  ><select id="moveProduct" required></select>
+                </div>
+                <div class="field">
+                  <label for="moveQty" id="moveQtyLabel"
+                    >¿Cuántas unidades llegaron?</label
+                  ><input
+                    type="number"
+                    id="moveQty"
+                    min="0.001"
+                    step="0.001"
+                    inputmode="decimal"
+                    required
+                  />
+                </div>
+              </div>
+              <details>
+                <summary>Tipo y referencia</summary>
+                <div class="grid grid2">
+                  <div class="field">
+                    <label for="moveKind">Tipo</label
+                    ><select id="moveKind">
+                      <option value="purchase">Mercancía recibida</option>
+                      <option value="waste">Merma</option>
+                      <option value="adjustment">Ajuste justificado</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="moveNote" id="moveNoteLabel"
+                      >Referencia o nota (opcional)</label
+                    ><input id="moveNote" type="text" />
+                  </div>
+                </div>
+              </details>
+              <div class="inventory-time">
+                <p>Cuándo: <b>Ahora, automáticamente</b></p>
+                <label class="check-option"
+                  ><input id="moveEarlier" type="checkbox" /> Registrar algo
+                  anterior</label
+                >
+                <div id="movePrevious" class="grid grid2" hidden>
+                  <div class="field">
+                    <label for="moveDate">Fecha de recepción o movimiento</label
+                    ><input id="moveDate" type="date" />
+                  </div>
+                  <div class="field">
+                    <label for="moveTime">Hora, si la conoces</label
+                    ><input id="moveTime" type="time" /><span class="hint"
+                      >Vacía = hora sin confirmar.</span
+                    >
+                  </div>
+                </div>
+              </div>
+              <button class="btn" id="btnMovement" type="submit">
+                Guardar movimiento
+              </button>
+            </fieldset>
+          </form>
+        </section>
+        <details class="inventory-variations" id="inventoryVariations">
+          <summary>Historial de variaciones</summary>
+          <div class="grid grid2 inventory-history-dates">
+            <div class="field">
+              <label for="inventoryHistoryFrom">Desde</label
+              ><input id="inventoryHistoryFrom" type="date" />
+            </div>
+            <div class="field">
+              <label for="inventoryHistoryTo">Hasta</label
+              ><input id="inventoryHistoryTo" type="date" />
+            </div>
+          </div>
+          <p class="footnote" style="margin-top: 6px">
+            Solo aparecen productos con conteo físico capturado en el periodo.
+            Teórico = conteo anterior + entradas y ajustes − salidas y ventas.
+            Solo se evalúan conteos físicos comparables.
+          </p>
+          <div id="invMsg"></div>
+          <div class="card" style="margin-top: 14px">
+            <div class="scroll">
+              <table id="tblMerma">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Producto</th>
+                    <th class="num">Teórico</th>
+                    <th class="num">Físico</th>
+                    <th class="num">Diferencia</th>
+                    <th class="num">Valor</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+      </section>
 
       <div class="pane" id="pane-estacionamiento">
         <h2 class="section-title" style="margin-top: 20px">

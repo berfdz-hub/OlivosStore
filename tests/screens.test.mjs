@@ -26,6 +26,11 @@ import { predictPurchase, evaluatePlans } from "../lib/prediction.js";
 import { initPlanner, readPlannerAnswers } from "../lib/planner.js";
 import { showSection } from "../lib/navigation.js";
 import {
+  inventoryTimestamp,
+  timeChoice,
+  initInventoryTime,
+} from "../lib/inventory-time.js";
+import {
   renderPurchase,
   renderPurchaseRows,
   reviewedPurchase,
@@ -50,6 +55,9 @@ function screen(name, globals = {}) {
     document,
     window,
     showSection,
+    inventoryTimestamp,
+    timeChoice,
+    initInventoryTime,
     history: {
       replaceState(a, b, hash) {
         window.location.hash = hash;
@@ -485,5 +493,6 @@ test("independent inventory searches products and retries a failed save with the
   await s.run("submitInventory()");
   assert.equal(requests[0].name, "save_inventory_count");
   assert.equal(requests[0].p.p_client_ref, requests[1].p.p_client_ref);
+  assert.deepEqual(requests[0].p.p_counts, requests[1].p.p_counts);
   assert.equal(requests[1].p.p_counts[0].physical_count, 0);
 });

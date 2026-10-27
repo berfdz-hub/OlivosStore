@@ -42,6 +42,7 @@ for (const name of [
   "2026102601_event_groups.sql",
   "2026102602_activity_planner.sql",
   "2026102603_journeys.sql",
+  "2026102604_inventory_clarity.sql",
 ]) {
   try {
     await db.exec(
@@ -926,6 +927,100 @@ await assert.rejects(
 await db.exec("reset role");
 const snapshot = (await db.query("select id,amount from tickets order by id"))
   .rows;
+const dateOnlyCount = [
+  {
+    product_id: pid,
+    physical_count: 7,
+    counted_at: null,
+    counted_on: date,
+    count_source: "manual",
+  },
+];
+const dateOnlyRef = crypto.randomUUID();
+await as(operator, () =>
+  db.query("select save_inventory_count($1,$2)", [dateOnlyCount, dateOnlyRef]),
+);
+await as(operator, () =>
+  db.query("select save_inventory_count($1,$2)", [dateOnlyCount, dateOnlyRef]),
+);
+const dateOnlyStored = (
+  await db.query(
+    "select counted_at,counted_on::text,created_by,created_at from inventory_counts where client_ref=$1",
+    [dateOnlyRef],
+  )
+).rows;
+assert.equal(dateOnlyStored.length, 1);
+assert.equal(dateOnlyStored[0].counted_at, null);
+assert.equal(dateOnlyStored[0].counted_on, date);
+assert.equal(dateOnlyStored[0].created_by, operator);
+assert(dateOnlyStored[0].created_at);
+const movementRef = crypto.randomUUID();
+const recordDateOnly = (qty = 6) =>
+  db.query(
+    "select record_inventory_movement_dated($1,null,$2,$3,$4,$5,$6) id",
+    [
+      pid,
+      "2020-02-02",
+      qty,
+      "purchase",
+      "Surtido sin hora conocida",
+      movementRef,
+    ],
+  );
+const savedDateOnly = (await as(admin, () => recordDateOnly())).rows[0].id;
+assert.equal(
+  (await as(admin, () => recordDateOnly())).rows[0].id,
+  savedDateOnly,
+);
+assert.equal(
+  (
+    await db.query("select occurred_at from inventory_movements where id=$1", [
+      savedDateOnly,
+    ])
+  ).rows[0].occurred_at,
+  null,
+);
+await assert.rejects(() => as(admin, () => recordDateOnly(9)), /otros datos/);
+await assert.rejects(() => as(operator, () => recordDateOnly()), /inválido/);
+await assert.rejects(
+  () => as(inactive, () => recordDateOnly()),
+  /no autorizada/,
+);
+await assert.rejects(
+  () =>
+    as(admin, () =>
+      db.query(
+        "select record_inventory_movement_dated($1,null,$2,-2,$3,$4,$5)",
+        [pid, date, "purchase", "Inválido", crypto.randomUUID()],
+      ),
+    ),
+  /signo/,
+);
+await assert.rejects(
+  () =>
+    as(admin, () =>
+      db.query(
+        "select record_inventory_movement_dated($1,null,$2,2,$3,$4,$5)",
+        [pid, "2099-01-01", "purchase", "Futuro", crypto.randomUUID()],
+      ),
+    ),
+  /inválido/,
+);
+assert(
+  (
+    await db.query(
+      "select count(*)::int n from audit_log where record_id=$1 and after_data->>'occurred_on'='2020-02-02'",
+      [savedDateOnly],
+    )
+  ).rows[0].n === 1,
+);
+await db.exec("set role anon");
+await assert.rejects(() => recordDateOnly(), /permission denied/);
+await db.exec("reset role");
+assert.deepEqual(
+  (await db.query("select id,amount from tickets order by id")).rows,
+  snapshot,
+);
 const backup = await db.dumpDataDir();
 await db.close();
 const restored = new PGlite({ loadDataDir: backup });

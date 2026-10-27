@@ -27,8 +27,9 @@ Las pruebas SQL usan PostgreSQL embebido (PGlite), con roles anónimo, operador,
 7. Aplicar `supabase/migrations/2026102601_event_groups.sql`. Agrega desglose por deporte, equipo, cantidad y franjas; mantiene correcciones y propuestas anteriores. Verificar anónimo sin lectura ni escritura, operador activo limitado al alcance acordado, operador desactivado sin acceso y administrador con acceso. `schema_versions` debe incluir `2026102601`.
 8. Aplicar `supabase/migrations/2026102602_activity_planner.sql`. Valida horarios aproximados, acepta el modelo v4 y borradores manuales con motivo. Conserva usuarios, datos e historial; `schema_versions` debe incluir `2026102602`.
 9. Aplicar `supabase/migrations/2026102603_journeys.sql`: actividades estructuradas, cancelaciones, versión e historial del calendario; conteos independientes; guardado de compras con revisión de agenda. `schema_versions` debe incluir `2026102603`. Se conserva la agenda anterior; la hora deja de ser obligatoria.
-10. Publicar el código con `vercel.json`. Si falta la migración, la app detiene la captura y reportes con un mensaje explícito.
-11. Probar acceso, reportes, carga de un archivo controlado, solicitud y aprobación de corrección, los tres pasos de Compras con cantidades conocidas y desconocidas, borradores manuales y reapertura, guardado de propuesta y recuperación de contraseña. Revisar los encabezados CSP y que los SQL/CSV de desarrollo no sean servidos.
+10. Aplicar `supabase/migrations/2026102604_inventory_clarity.sql`. Agrega fechas de inventario sin hora conocida y fecha de registro para los conteos nuevos. No modifica registros históricos. Conserva los permisos existentes y la bitácora; exige `schema_versions` con `2026102604`.
+11. Publicar el código con `vercel.json`. Si falta la migración, la app detiene la captura y reportes con un mensaje explícito.
+12. Probar acceso, reportes, carga de un archivo controlado, solicitud y aprobación de corrección, los tres pasos de Compras con cantidades conocidas y desconocidas, borradores manuales y reapertura, guardado de propuesta y recuperación de contraseña. Revisar los encabezados CSP y que los SQL/CSV de desarrollo no sean servidos.
 
 Aplicar primero seguridad es independiente del resto de la actualización. Las migraciones restantes y el frontend deben desplegarse en la misma ventana: revocan las antiguas escrituras directas. No volver a ejecutar los SQL históricos sueltos después de las migraciones; podrían restablecer permisos antiguos.
 
@@ -38,7 +39,7 @@ Aplicar primero seguridad es independiente del resto de la actualización. Las m
 - La casilla «Conciliar recibos existentes» permite reemplazar contenido discrepante y deja registro de antes y después. Un día cerrado debe reabrirse primero.
 - Ante recibos históricos duplicados el sistema se detiene y pide conciliación; la migración no elimina ventas automáticamente.
 - Los registros sin precio por línea o costo original muestran cobertura incompleta de utilidad. Capturar un costo nuevo en el catálogo no altera resultados anteriores.
-- Los conteos antiguos sin hora se muestran como referencias inciertas y no generan compras automáticas. Capturar un nuevo conteo con fecha y hora de Ciudad de México y registrar compras recibidas, mermas y ajustes.
+- Los conteos antiguos sin hora se muestran como referencias inciertas y no generan compras automáticas. El conteo y los movimientos nuevos usan «Ahora» automáticamente; al capturar algo anterior se puede dejar la hora vacía. Se conserva la incertidumbre cuando no se puede ordenar el movimiento con un conteo. Un conteo posterior al registro de ese movimiento restablece la referencia.
 - Los importes de merma valorizados al costo del catálogo son estimaciones actuales, diferenciadas de la utilidad histórica.
 
 ## Navegación
@@ -66,6 +67,14 @@ Las actividades reales se capturan en Registrar o se completan mediante correcci
 En «Días en el periodo», «Corregir / solicitar» abre una propuesta con deporte, categoría, evento, etiquetas, notas y motivo obligatorio. El capturista puede aplicar cambios a su propia captura de hoy si está abierta. Las demás propuestas requieren aprobación; administración puede corregir directamente días abiertos. Para aprobar un día cerrado primero debe reabrirse. Una solicitud pendiente no modifica los datos; si otra persona cambió el día, se exige una propuesta actualizada.
 
 Cada solicitud y decisión conserva autor, hora, motivo, valores antes/después y estado. Los registros aplicados muestran «Corregido» y «Ver historial». No hay permisos de editar ni borrar la bitácora desde la app; las tablas de historial también rechazan `UPDATE` y `DELETE`. Revertir exige otra corrección. La conservación a largo plazo depende además de los respaldos del proveedor. Las ventas, costos, conteos y estacionamiento no se modifican mediante este formulario y siguen bajo control administrativo; sus cambios se registran en `audit_log`. El capturista no puede sustituir un conteo existente con otro valor.
+
+## Inventario y resumen — versión 2026102604
+
+Inventario muestra «Tenemos», «Comprar» y «Último surtido». Cada producto abre sus conteos, entradas, ventas, devoluciones, mermas y cálculo; administración también puede consultar autor y valores antes/después en la bitácora. La comparación con un conteo sin guardarlo y el historial de variaciones siguen disponibles en el detalle. Se conservan productos inactivos mediante un filtro.
+
+Seleccionar una compra guardada actualiza lo que falta con las existencias actuales, conservando la propuesta original y señalando las cantidades manuales para revisión. Los productos sin referencia quedan pendientes. Recibir mercancía pide producto y cantidad; la hora se registra automáticamente. Para capturas anteriores la fecha es obligatoria y la hora opcional. Si no se conoce, se guarda como desconocida, sin inventarla. Mermas y ajustes requieren motivo; los reintentos conservan la misma identidad y fecha para evitar duplicados.
+
+Jornadas recupera las ventas, tickets y producto más vendido de los últimos siete días, además de pendientes y próxima compra. La interfaz se comprobó en escritorio y anchos móviles de 390 y 320 píxeles. Pasan 74 pruebas automatizadas, las auditorías de DOM e importaciones y la compilación. La migración se ensayó sobre un respaldo restaurado y se verificaron guardados, reintentos y bitácora en producción dentro de una transacción revertida.
 
 ## Recuperación y trazabilidad
 

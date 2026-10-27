@@ -187,21 +187,36 @@
         </p>
 
         <div hidden class="card" id="cardInv">
-          <p class="footnote" style="margin-bottom: 12px">
-            Puedes importar las existencias actuales de Loyverse o capturarlas
-            manualmente. Los recibos de venta no contienen inventario.
-          </p>
-          <div class="field">
-            <label for="fCountAt"
-              >Fecha y hora de estas existencias (Ciudad de México)</label
-            ><input type="datetime-local" id="fCountAt" />
-            <div class="hint">
-              Usa la hora del conteo o de la exportación. El inventario
-              importado es una referencia del sistema.
+          <div class="inventory-time" id="countClock">
+            <p>Cuándo: <b>Ahora, automáticamente</b></p>
+            <label class="check-option"
+              ><input id="countEarlier" type="checkbox" /> Registrar un conteo
+              anterior</label
+            >
+            <div id="countPrevious" class="grid grid2" hidden>
+              <div class="field">
+                <label for="countDate">Fecha del conteo o exportación</label
+                ><input id="countDate" type="date" />
+              </div>
+              <div class="field">
+                <label for="countTime">Hora, si la conoces</label
+                ><input id="countTime" type="time" /><span class="hint"
+                  >Vacía = hora sin confirmar.</span
+                >
+              </div>
             </div>
+          </div>
+          <div hidden>
+            <label for="fCountAt">Fecha y hora del conteo del día</label
+            ><input type="datetime-local" id="fCountAt" />
           </div>
           <details id="inventoryImport">
             <summary>Importar archivo de existencias</summary>
+            <p class="hint">
+              El archivo contiene existencias del sistema. Si se exportó antes,
+              cambia la fecha del conteo. Los recibos de venta no contienen
+              inventario.
+            </p>
             <label style="margin-bottom: 6px"
               >Importar existencias de Loyverse</label
             >
@@ -213,10 +228,6 @@
             <input type="file" id="fInventoryCsv" accept=".csv,text/csv" />
             <div id="inventoryCsvSummary"></div>
           </details>
-          <p class="footnote" style="margin-bottom: 12px">
-            Revisa las cantidades importadas o llena solamente los productos que
-            contaste. Los demás se dejan vacíos.
-          </p>
           <div class="field">
             <label for="inventorySearch">Buscar producto para contar</label
             ><input
