@@ -291,3 +291,5 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 @media screen and (max-width:380px){
   .activity-shortcuts{grid-template-columns:1fr}
 }
+#barchart{overflow-x:auto;overflow-y:hidden;padding-top:24px;padding-bottom:12px}
+#barchart>div{min-width:40px}
