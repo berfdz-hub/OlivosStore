@@ -269,3 +269,22 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .calendar-weekday{text-align:center;font-size:12px;color:var(--muted);padding:4px}.editing-one .activity-shortcuts,.editing-one [data-remove-activity]{display:none}.journey-detail h2,.journey-picker h3{text-transform:none}
 
 .calendar-day small{font-size:11px}#inventoryImport{margin:16px 0}#inventoryImport[open]{padding-bottom:12px;border-bottom:1px solid var(--line)}
+
+/* Keep every purchase quantity visible without sideways scrolling on phones. */
+@media screen and (max-width:600px){
+  #tblPrediction,#tblPrediction tbody{display:block;width:100%;min-width:0}
+  #tblPrediction thead{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  #tblPrediction tbody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-bottom:2px solid var(--line);padding:8px}
+  #tblPrediction tbody tr:last-child{border-bottom:0}
+  #tblPrediction td{display:block;min-width:0;text-align:left;border:0;padding:10px 8px;overflow-wrap:anywhere;font-size:14px}
+  #tblPrediction td:first-child,#tblPrediction td:last-child{grid-column:1/-1}
+  #tblPrediction td:first-child b{font-size:17px}
+  #tblPrediction td:not(:first-child)::before{display:block;font:600 12px 'Source Sans 3',sans-serif;color:var(--muted);margin-bottom:6px}
+  #tblPrediction td:nth-child(2)::before{content:'Venta estimada'}
+  #tblPrediction td:nth-child(3)::before{content:'Existencias'}
+  #tblPrediction td:nth-child(4)::before{content:'Comprar'}
+  #tblPrediction td:nth-child(4){border-top:1px solid var(--line)}
+  #tblPrediction details{max-width:100%}
+  #tblPrediction summary{min-height:32px;padding:8px 0}
+  #tblPrediction .manual-quantity input{width:100%;min-height:44px}
+}
