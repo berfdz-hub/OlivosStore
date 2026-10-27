@@ -129,6 +129,34 @@ test("all report renderers work and stored strings cannot create executable HTML
   );
   assert(s.document.getElementById("tblProdRank").textContent.includes(attack));
 });
+test("administrator catalog loads protected view costs and paginates without raw table access", async () => {
+  const products = Array.from({ length: 501 }, (_, i) => ({
+    id: String(i), name: `Producto ${i}`, category: "Bebida",
+    cost_price: i === 500 ? null : 7.5, sell_price: 15, active: true,
+    perishable: false, storage_limit: 24, perishable_limit: null,
+  }));
+  const s = screen("reportes", { supabase: {
+    from(table) {
+      return {
+        select() { return this; },
+        order() { return this; },
+        async range(from, to) {
+          return table === "products_view"
+            ? { data: products.slice(from, to + 1) }
+            : { error: { message: "permission denied for table products" } };
+        },
+      };
+    },
+  } });
+  await s.run("loadCatalogFull()");
+  const rows = s.document.querySelectorAll("#tblCatalog tbody tr");
+  assert.equal(rows.length, 501);
+  assert.equal(rows[0].querySelector(".edCost").value, "7.5");
+  assert.equal(rows[500].querySelector(".edCost").value, "");
+  assert.equal(rows[0].querySelector(".edStorage").value, "24");
+  assert.equal(rows[0].querySelector('[data-action="saveProduct"]').textContent, "Guardar");
+});
+
 test("operator preserves exact names in inventory text and input attributes", () => {
   const s = screen("operador");
   s.ctx.attack = attack;

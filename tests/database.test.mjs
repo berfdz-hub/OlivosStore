@@ -2,9 +2,10 @@ import { PGlite } from "@electric-sql/pglite";
 import fs from "node:fs";
 import assert from "node:assert/strict";
 import { businessDate, parseBusinessDate } from "../lib/csv.js";
+import { checkInvokerSecurity } from "./invoker-security-checks.mjs";
 
 const db = new PGlite();
-await db.exec(`create role anon; create role authenticated; create schema auth;
+await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth;
 create table auth.users(id uuid primary key,raw_user_meta_data jsonb default '{}');
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
 grant usage on schema auth,public to anon,authenticated; grant execute on function auth.uid() to anon,authenticated;`);
@@ -48,6 +49,7 @@ for (const name of [
   "2026102603_journeys.sql",
   "2026102604_inventory_clarity.sql",
   "2026102701_read_only_views.sql",
+  "2026102702_invoker_views.sql",
 ]) {
   try {
     await db.exec(
@@ -206,10 +208,32 @@ assert.equal(
     .length,
   0,
 );
+await assert.rejects(
+  () => as(operator, () => db.query("select * from ticket_items")),
+  /permission denied/,
+);
+await assert.rejects(
+  () => as(operator, () => db.query("select cost_price from products")),
+  /permission denied/,
+);
+await assert.rejects(
+  () =>
+    as(operator, () =>
+      db.query("select id from ticket_items where unit_cost > 0"),
+    ),
+  /permission denied/,
+);
 assert.equal(
-  (await as(operator, () => db.query("select * from ticket_items"))).rows
+  (await as(operator, () => db.query("select id from ticket_items"))).rows
     .length,
-  0,
+  hidden.rows.length,
+);
+assert(
+  (
+    await db.query(
+      "select reloptions from pg_class where oid in ('products_view'::regclass,'ticket_items_view'::regclass)",
+    )
+  ).rows.every((r) => r.reloptions.includes("security_invoker=true")),
 );
 const before = (
   await as(admin, () =>
@@ -1052,6 +1076,7 @@ assert.deepEqual(
   (await db.query("select id,amount from tickets order by id")).rows,
   snapshot,
 );
+await checkInvokerSecurity(db, { admin, operator, inactive });
 const backup = await db.dumpDataDir();
 await db.close();
 const restored = new PGlite({ loadDataDir: backup });
