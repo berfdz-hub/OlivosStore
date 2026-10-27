@@ -9,7 +9,7 @@ export const CONFIGURED=true;
 const previewRole=new URLSearchParams(location.search).get('role')==='operador'?'operador':'admin';
 const day='2026-10-05';
 const store={
- profiles:[{id:'admin',full_name:(previewRole==='admin'?'Administración':'Capturista')+' · prueba local',role:previewRole,active:true}],schema_versions:[{version:2026102604}],
+ profiles:[{id:'admin',full_name:(previewRole==='admin'?'Administración':'Capturista')+' · prueba local',role:previewRole,active:true}],schema_versions:[{version:2026102703}],
  products_view:[{id:'p1',name:'Agua 600 ml',category:'Bebidas',sell_price:20,cost_price:8,active:true},{id:'p2',name:'Agua 1500 ml',category:'Bebidas',sell_price:30,cost_price:12,active:true}],
  sale_days:[{id:'d1',date:day,sport:'futbol',status:'submitted',day_type:'evento_especial',event_name:'Partido de prueba',event_tags:['futbol'],created_by:'admin',profiles:{full_name:'Prueba local'},tickets:[{amount:100}]}],
  tickets_view:[{id:'t1',sale_day_id:'d1',ts:day+'T18:00:00Z',amount:100,receipt_type:'sale'}],
@@ -18,6 +18,9 @@ const store={
  inventory_counts:[{id:'c1',sale_day_id:'d1',product_id:'p1',physical_count:20,counted_at:day+'T17:00:00Z',count_source:'manual',opening_stock:null,sold:null}],
  day_corrections:[],correction_decisions:[],purchase_plans:[],inventory_movements:[],audit_log:[],scheduled_games:[{id:"s1",date:"2026-10-31",status:"scheduled",version:1,activity:{type:"futbol",teamMode:"club_puebla",team:"Club Puebla",games:1,slots:[{start:"11:00",end:""}]}},{id:"s2",date:"2026-10-31",status:"scheduled",version:1,activity:{type:"futbol",teamMode:"academy",team:"",games:2,slots:[{start:"09:00",end:""},{start:"11:30",end:""}]}}],app_settings:[{id:true,operators_see_all_days:true,operators_see_costs:true}]
 };store.products=store.products_view;
+store.parking_corrections=[];store.parking_decisions=[];
+for(const date of ['2026-10-17','2026-10-20'])store.sale_days.push({id:date,date,sport:'futbol',status:'submitted',day_type:'evento_especial',created_by:'admin',profiles:{full_name:'Prueba local'}});
+for(const [i,cars]of [38,39,25].entries())store.games.push({id:'move'+i,revision:1,sale_day_id:'2026-10-20',start_time:['09:00:00','11:30:00','15:45:00'][i],cars_parked:cars,cars_charged:cars,parking_rate:30,charges_parking:true,notes:'Juego sintético '+(i+1)});
 for(const [id,name,physical_count,qty] of [['p3','Banderilla',27,12],['p4','Agua litro',39,59],['p5','Gomitas',3,3]]){
  store.products_view.push({id,name,category:id==='p4'?'Bebidas':'Alimentos',sell_price:20,cost_price:8,active:true});
  store.inventory_counts.push({id:'c'+id,sale_day_id:null,product_id:id,physical_count,counted_on:'2026-10-04',counted_at:null,count_source:'legacy'});
@@ -35,7 +38,8 @@ for(const [id,type,teamMode,games,qty] of [['sample3','futbol','club_puebla',1,3
  store.ticket_items_view.find(i=>i.ticket_id==='t'+id).qty=qty;
 }
 store.tickets=store.tickets_view;
-const previewKey='olivos-preview-estimates-'+previewRole;
+for(const game of store.games){game.revision=1;if(game.start_time.length===5)game.start_time+=':00';}
+const previewKey='olivos-preview-parking-corrections-'+previewRole;
 try{const saved=JSON.parse(sessionStorage.getItem(previewKey)||'null');if(saved)Object.assign(store,saved);}catch{}
 addEventListener('pagehide',()=>sessionStorage.setItem(previewKey,JSON.stringify(store)));
 
@@ -50,6 +54,17 @@ class Query{
  then(resolve,reject){try{let rows=(store[this.table]||[]).filter(r=>this.filters.every(f=>f(r)));if(this.mode==='insert'){const list=[this.payload].flat();rows=list.map(r=>({...r,id:crypto.randomUUID()}));store[this.table].push(...rows);}if(this.mode==='update')rows.forEach(r=>Object.assign(r,this.payload));if(this.mode==='delete')store[this.table]=store[this.table].filter(r=>!rows.includes(r));rows=rows.slice(this.start,this.end+1);return Promise.resolve({data:this.one?(rows[0]||null):rows,error:null}).then(resolve,reject);}catch(e){return Promise.reject(e).then(resolve,reject);}}
 }
 export const supabase={from:t=>new Query(t),rpc:async(name,p)=>{
+if(name==='request_parking_correction'){
+ const prior=store.parking_corrections.find(r=>r.client_ref===p.p_client_ref);if(prior)return{data:{id:prior.id,applied:prior.applied_immediately}};
+ const direct=previewRole==='admin',id=crypto.randomUUID();
+ for(const change of p.p_changes){const game=store.games.find(g=>g.id===change.before.id);if(game.revision!==change.before.revision)return{error:{message:'El estacionamiento cambió. Recarga'}};}
+ const after=p.p_changes.map(c=>({...c.after,id:c.before.id,revision:c.before.revision+1}));
+ if(direct)for(const a of after){const game=store.games.find(g=>g.id===a.id);Object.assign(game,a,{sale_day_id:store.sale_days.find(d=>d.date===a.date).id});}
+ store.parking_corrections.push({id,game_ids:p.p_changes.map(c=>c.before.id),requested_name:'Prueba local',requested_at:new Date().toISOString(),requested_by:'admin',reason:p.p_reason,before_data:p.p_changes.map(c=>c.before),after_data:after,applied_immediately:direct,client_ref:p.p_client_ref});return{data:{id,applied:direct}};}
+if(name==='review_parking_correction'){
+ const c=store.parking_corrections.find(r=>r.id===p.p_request);if(previewRole!=='admin')return{error:{message:'Solo administración'}};
+ if(p.p_approve)for(const a of c.after_data)Object.assign(store.games.find(g=>g.id===a.id),a,{sale_day_id:store.sale_days.find(d=>d.date===a.date).id});
+ store.parking_decisions.push({id:crypto.randomUUID(),correction_id:c.id,decided_name:'Administración · prueba local',decided_at:new Date().toISOString(),approved:p.p_approve,note:p.p_note});return{data:null};}
 if(name==='save_scheduled_activities'){
  if(previewRole!=='admin')return{error:{message:'Solo administración'}};
  if(p.p_id){const r=store.scheduled_games.find(r=>r.id===p.p_id);if(!r||r.version!==p.p_version)return{error:{message:'La actividad cambió'}};const before=structuredClone(r);Object.assign(r,{activity:p.p_activities[0],notes:p.p_notes,version:r.version+1,status:p.p_cancel?'cancelled':'scheduled',change_reason:p.p_reason});store.audit_log.push({table_name:'scheduled_games',record_id:r.id,occurred_at:new Date().toISOString(),actor:'admin',operation:'UPDATE',before_data:before,after_data:structuredClone(r)});}

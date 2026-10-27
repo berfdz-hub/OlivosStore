@@ -3,6 +3,7 @@ import fs from "node:fs";
 import assert from "node:assert/strict";
 import { businessDate, parseBusinessDate } from "../lib/csv.js";
 import { checkInvokerSecurity } from "./invoker-security-checks.mjs";
+import { checkParkingCorrections } from "./parking-security-checks.mjs";
 
 const db = new PGlite();
 await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth;
@@ -50,6 +51,7 @@ for (const name of [
   "2026102604_inventory_clarity.sql",
   "2026102701_read_only_views.sql",
   "2026102702_invoker_views.sql",
+  "2026102703_parking_corrections.sql",
 ]) {
   try {
     await db.exec(
@@ -1077,6 +1079,7 @@ assert.deepEqual(
   snapshot,
 );
 await checkInvokerSecurity(db, { admin, operator, inactive });
+await checkParkingCorrections(db, { admin, operator, inactive });
 const backup = await db.dumpDataDir();
 await db.close();
 const restored = new PGlite({ loadDataDir: backup });

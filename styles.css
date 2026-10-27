@@ -430,3 +430,18 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
  #parkingCards{grid-template-columns:minmax(0,1fr)}
 }
 .inventory-layout.expanded-view .inventory-detail{width:100%;max-width:800px;justify-self:center;box-sizing:border-box}
+.parking-edit-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}
+.parking-corrected{font-size:12px;font-weight:700;color:#315628;background:#e7f1e2;border:1px solid #bfd3b7;padding:4px 8px;border-radius:12px}
+.parking-correction-panel{margin-top:18px;max-width:850px;scroll-margin-top:90px}
+.parking-correction-panel h3{font-size:23px;margin-bottom:8px}
+.parking-correction-panel .field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.parking-correction-panel input,.parking-correction-panel select,.parking-correction-panel textarea{max-width:100%;box-sizing:border-box;font:inherit}
+.parking-correction-panel textarea{min-height:85px}
+.parking-correction-panel .parking-charge-toggle{display:flex;align-items:center;gap:10px;min-height:44px}
+.parking-correction-panel .parking-charge-toggle input{width:20px;height:20px}
+.parking-change-preview{padding:16px;background:#f2f6ef;border:1px solid var(--line);border-radius:10px;margin:16px 0}
+.parking-change-preview ul,#parkingHistory ul{padding-left:22px;margin:8px 0 14px;overflow-wrap:anywhere}
+#parkingFormMessage{color:#a62924;margin-top:12px;overflow-wrap:anywhere}
+#parkingHistory .correction-entry{overflow-wrap:anywhere}
+#parkingHistory textarea{width:100%;box-sizing:border-box;min-height:80px;font:inherit}
+@media(max-width:600px){.parking-correction-panel{padding:16px}.parking-correction-panel .grid2{grid-template-columns:minmax(0,1fr)}.parking-edit-actions .btn{min-height:44px}.parking-correction-panel input[type=date],.parking-correction-panel input[type=time]{min-width:0;width:100%}}

@@ -1504,7 +1504,21 @@
           <a class="btn sec" href="operador.html?task=jornada#captureParking"
             >Capturar autos y tarifa</a
           >
+          <button type="button" class="btn sec" id="parkingMoveDay">
+            Cambiar fecha de un día
+          </button>
         </div>
+        <div id="parkingFeedback" aria-live="polite"></div>
+        <section
+          id="parkingCorrectionPanel"
+          class="card parking-correction-panel"
+          aria-labelledby="parkingCorrectionTitle"
+          hidden
+        ></section>
+        <details id="parkingHistorySection" class="parking-method">
+          <summary id="parkingHistoryLabel">Correcciones e historial</summary>
+          <div id="parkingHistory"></div>
+        </details>
         <div
           class="grid grid3"
           id="parkingCards"
@@ -1540,6 +1554,7 @@
                   <th class="num">+ Estacionamiento</th>
                   <th class="num">Total combinado</th>
                   <th class="num">Total por auto</th>
+                  <th>Correcciones</th>
                 </tr>
               </thead>
               <tbody></tbody>
