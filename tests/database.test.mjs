@@ -41,6 +41,7 @@ for (const name of [
   "2026102101_guided_planning.sql",
   "2026102601_event_groups.sql",
   "2026102602_activity_planner.sql",
+  "2026102603_journeys.sql",
 ]) {
   try {
     await db.exec(
@@ -680,6 +681,249 @@ for (const bad of [
       ]),
     ),
   );
+
+// Calendar is admin-only, optimistic, idempotent and permanently audited.
+const agendaGroup = {
+  type: "futbol",
+  teamMode: "club_puebla",
+  team: "Club Puebla",
+  games: 3,
+  slots: [
+    { start: "09:00", end: "" },
+    { start: "11:00", end: "" },
+    { start: "13:00", end: "" },
+  ],
+};
+const calendarRef = crypto.randomUUID();
+const calendarSave = (
+  id = null,
+  version = 1,
+  cancel = false,
+  reason = "",
+  ref = calendarRef,
+  groups = [agendaGroup],
+) =>
+  db.query("select save_scheduled_activities($1,$2,$3,$4,$5,$6,$7,$8) result", [
+    date,
+    groups,
+    "Jornada de prueba",
+    id,
+    version,
+    cancel,
+    reason,
+    ref,
+  ]);
+await assert.rejects(
+  () => as(operator, () => calendarSave()),
+  /Solo administración/,
+);
+await assert.rejects(
+  () => as(inactive, () => calendarSave()),
+  /Solo administración/,
+);
+const createdCalendar = (await as(admin, () => calendarSave())).rows[0].result;
+assert.deepEqual(
+  (await as(admin, () => calendarSave())).rows[0].result,
+  createdCalendar,
+);
+await assert.rejects(
+  () =>
+    as(admin, () =>
+      calendarSave(null, 1, false, "", calendarRef, [
+        { ...agendaGroup, games: 2, slots: [] },
+      ]),
+    ),
+  /reintento/,
+);
+const scheduledId = createdCalendar[0];
+await assert.rejects(
+  () =>
+    as(admin, () =>
+      db.query("delete from scheduled_games where id=$1", [scheduledId]),
+    ),
+  /permission denied/,
+);
+await assert.rejects(
+  () =>
+    as(admin, () =>
+      calendarSave(scheduledId, 1, false, "", crypto.randomUUID()),
+    ),
+  /Explica/,
+);
+await as(admin, () =>
+  calendarSave(
+    scheduledId,
+    1,
+    false,
+    "Cambió el horario",
+    crypto.randomUUID(),
+    [{ ...agendaGroup, slots: [] }],
+  ),
+);
+await assert.rejects(
+  () =>
+    as(admin, () =>
+      calendarSave(
+        scheduledId,
+        1,
+        false,
+        "Otro cambio pendiente",
+        crypto.randomUUID(),
+      ),
+    ),
+  /actividad cambió/,
+);
+assert.equal(
+  (
+    await db.query(
+      "select version,start_time from scheduled_games where id=$1",
+      [scheduledId],
+    )
+  ).rows[0].start_time,
+  null,
+);
+const copyDate = businessDate(
+  new Date(Date.parse(date + "T12:00:00Z") + 86400000),
+);
+const dupRef = crypto.randomUUID();
+const duplicate = () =>
+  db.query("select duplicate_scheduled_day($1,$2,$3) result", [
+    date,
+    copyDate,
+    dupRef,
+  ]);
+const copy = (await as(admin, duplicate)).rows[0].result;
+assert.deepEqual((await as(admin, duplicate)).rows[0].result, copy);
+await assert.rejects(
+  () =>
+    as(admin, () =>
+      db.query("select duplicate_scheduled_day($1,$2,$3)", [
+        date,
+        copyDate,
+        crypto.randomUUID(),
+      ]),
+    ),
+  /ya tiene/,
+);
+await as(admin, () =>
+  calendarSave(
+    scheduledId,
+    2,
+    true,
+    "Se canceló por lluvia",
+    crypto.randomUUID(),
+    [{ ...agendaGroup, slots: [] }],
+  ),
+);
+assert.equal(
+  (
+    await db.query("select status from scheduled_games where id=$1", [
+      scheduledId,
+    ])
+  ).rows[0].status,
+  "cancelled",
+);
+assert.equal(
+  (
+    await db.query(
+      "select count(*)::int n from audit_log where table_name='scheduled_games' and record_id=$1",
+      [scheduledId],
+    )
+  ).rows[0].n,
+  3,
+);
+await assert.rejects(
+  () =>
+    as(admin, () =>
+      db.query("delete from audit_log where record_id=$1", [scheduledId]),
+    ),
+  /permission denied|inmutable|historial/i,
+);
+// A calendar mutation invalidates a saved proposal's source even across clients.
+const scheduledPlan = {
+  ...plan,
+  event_date: copyDate,
+  summary: { ...plan.summary, scheduleFingerprint: "[]" },
+};
+await assert.rejects(
+  () =>
+    as(operator, () =>
+      db.query("select save_purchase_plan($1,$2)", [
+        scheduledPlan,
+        crypto.randomUUID(),
+      ]),
+    ),
+  /calendario cambió/,
+);
+scheduledPlan.summary.scheduleFingerprint = JSON.stringify(
+  copy
+    .map((id) => ({ id, version: 1 }))
+    .sort((a, b) => a.id.localeCompare(b.id)),
+);
+await as(operator, () =>
+  db.query("select save_purchase_plan($1,$2)", [
+    scheduledPlan,
+    crypto.randomUUID(),
+  ]),
+);
+// Counting stock alone never creates a sale day and retries never double-count.
+const daysBefore = (await db.query("select count(*)::int n from sale_days"))
+  .rows[0].n;
+const standaloneRef = crypto.randomUUID(),
+  standaloneCounts = [
+    {
+      product_id: pid,
+      physical_count: 12.5,
+      counted_at: new Date(Date.now() - 30000).toISOString(),
+      count_source: "manual",
+    },
+  ];
+const independentCount = () =>
+  db.query("select save_inventory_count($1,$2) n", [
+    standaloneCounts,
+    standaloneRef,
+  ]);
+assert.equal((await as(operator, independentCount)).rows[0].n, 1);
+assert.equal((await as(operator, independentCount)).rows[0].n, 1);
+assert.equal(
+  (await db.query("select count(*)::int n from sale_days")).rows[0].n,
+  daysBefore,
+);
+assert.equal(
+  (
+    await as(operator, () =>
+      db.query(
+        "select count(*)::int n from inventory_counts where client_ref=$1",
+        [standaloneRef],
+      ),
+    )
+  ).rows[0].n,
+  1,
+);
+await assert.rejects(
+  () =>
+    as(operator, () =>
+      db.query("select save_inventory_count($1,$2)", [
+        [{ ...standaloneCounts[0], physical_count: -1 }],
+        crypto.randomUUID(),
+      ]),
+    ),
+  /Revisa/,
+);
+await assert.rejects(
+  () => as(inactive, independentCount),
+  /Cuenta no autorizada/,
+);
+await db.exec("set role anon");
+await assert.rejects(
+  () =>
+    db.query("select save_inventory_count($1,$2)", [
+      standaloneCounts,
+      standaloneRef,
+    ]),
+  /permission denied/,
+);
+await db.exec("reset role");
 const snapshot = (await db.query("select id,amount from tickets order by id"))
   .rows;
 const backup = await db.dumpDataDir();

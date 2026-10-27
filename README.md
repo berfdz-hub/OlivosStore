@@ -14,7 +14,7 @@ pnpm build
 
 Las pruebas SQL usan PostgreSQL embebido (PGlite), con roles anónimo, operador, administrador y usuario desactivado. No se conectan a producción. Las pruebas de pantallas usan un DOM aislado y textos hostiles. `tests/import-audit.mjs` también verifica los CSV históricos locales si están disponibles; estos no se publican ni son necesarios para CI.
 
-`node tests/ui-preview-server.mjs` inicia una vista de prueba en `http://127.0.0.1:8765`. Sus cuentas, ventas, inventarios y guardados son sintéticos; **no usar este servidor como aplicación real**. El build copia exclusivamente HTML, JS de la app, estilos, configuración pública e iconos a `dist`.
+`node tests/ui-preview-server.mjs` inicia una vista de prueba en un puerto local libre (la terminal muestra la dirección). Sus cuentas, ventas, inventarios y guardados son sintéticos; **no usar este servidor como aplicación real**. El build copia exclusivamente HTML, JS de la app, estilos, configuración pública e iconos a `dist`.
 
 ## Orden obligatorio de publicación
 
@@ -26,8 +26,9 @@ Las pruebas SQL usan PostgreSQL embebido (PGlite), con roles anónimo, operador,
 6. En Authentication desactivar el registro público. El administrador invita a las personas autorizadas y activa sus perfiles. Verificar que la URL de recuperación `https://olivos-store.vercel.app/index.html?recover=1` esté permitida.
 7. Aplicar `supabase/migrations/2026102601_event_groups.sql`. Agrega desglose por deporte, equipo, cantidad y franjas; mantiene correcciones y propuestas anteriores. Verificar anónimo sin lectura ni escritura, operador activo limitado al alcance acordado, operador desactivado sin acceso y administrador con acceso. `schema_versions` debe incluir `2026102601`.
 8. Aplicar `supabase/migrations/2026102602_activity_planner.sql`. Valida horarios aproximados, acepta el modelo v4 y borradores manuales con motivo. Conserva usuarios, datos e historial; `schema_versions` debe incluir `2026102602`.
-9. Publicar el código con `vercel.json`. Si falta la migración, la app detiene la captura y reportes con un mensaje explícito.
-10. Probar acceso, reportes, carga de un archivo controlado, solicitud y aprobación de corrección, los tres pasos de Compras con cantidades conocidas y desconocidas, borradores manuales y reapertura, guardado de propuesta y recuperación de contraseña. Revisar los encabezados CSP y que los SQL/CSV de desarrollo no sean servidos.
+9. Aplicar `supabase/migrations/2026102603_journeys.sql`: actividades estructuradas, cancelaciones, versión e historial del calendario; conteos independientes; guardado de compras con revisión de agenda. `schema_versions` debe incluir `2026102603`. Se conserva la agenda anterior; la hora deja de ser obligatoria.
+10. Publicar el código con `vercel.json`. Si falta la migración, la app detiene la captura y reportes con un mensaje explícito.
+11. Probar acceso, reportes, carga de un archivo controlado, solicitud y aprobación de corrección, los tres pasos de Compras con cantidades conocidas y desconocidas, borradores manuales y reapertura, guardado de propuesta y recuperación de contraseña. Revisar los encabezados CSP y que los SQL/CSV de desarrollo no sean servidos.
 
 Aplicar primero seguridad es independiente del resto de la actualización. Las migraciones restantes y el frontend deben desplegarse en la misma ventana: revocan las antiguas escrituras directas. No volver a ejecutar los SQL históricos sueltos después de las migraciones; podrían restablecer permisos antiguos.
 
@@ -58,7 +59,7 @@ La lista principal muestra producto, venta estimada, existencias y compra. El de
 
 Si faltan referencias, conteos o límites, se puede guardar un borrador. Activar cantidades manuales exige motivo; cada cantidad y producto agregado queda marcado, conservando por separado el cálculo original. Un producto sin referencia mantiene estimación nula. Guardar no aumenta inventario ni ejecuta una compra. Reabrir usa historial e inventario actuales y conserva las decisiones manuales para revisar una nueva versión. Las propuestas guardadas son inmutables, con autor y fecha. Los borradores y decisiones manuales se excluyen de la calibración y no se presentan como precisión del modelo.
 
-Las actividades reales se capturan en Registrar o se completan mediante correcciones con motivo e historial. No se reclasifican históricos automáticamente. La cantidad debe coincidir con estacionamiento si se capturan ambos al crear el día. Las importaciones de varios días dejan las actividades pendientes de revisión individual. La lógica de los modelos anteriores sigue disponible para evaluar sus propuestas; el usuario ya no elige entre distintos métodos de compra.
+Las actividades reales se capturan en Registrar o se completan mediante correcciones con motivo e historial. No se reclasifican históricos automáticamente. El estacionamiento puede cubrir solo algunos partidos, pero no superar el total de actividades confirmadas. Las importaciones de varios días dejan las actividades pendientes de revisión individual. La lógica de los modelos anteriores sigue disponible para evaluar sus propuestas; el usuario ya no elige entre distintos métodos de compra.
 
 ## Corregir clasificación con historial
 
@@ -71,3 +72,16 @@ Cada solicitud y decisión conserva autor, hora, motivo, valores antes/después 
 `audit_log` guarda actor, fecha, tabla, operación y valores antes/después; solo administración lo puede leer. Las importaciones fallidas se revierten completas por día y se pueden reintentar. `source_key` evita duplicación de un recibo y `client_ref` evita duplicación de movimientos.
 
 El respaldo del proveedor y una restauración real deben verificarse desde el panel administrativo. Las pruebas locales de migraciones y restauración de PGlite no certifican por sí solas el respaldo de Supabase. No revertir una migración borrando columnas con datos nuevos; conservar seguridad y corregir mediante una migración posterior.
+
+
+## Jornadas y calendario — preparación 2026102603
+
+La navegación principal tiene Jornadas, Compras, Inventario y Reportes. Las rutas anteriores Inicio y Calendario abren Jornadas. En computadora el mes y el detalle de fecha aparecen juntos; en celular comienza con una lista de fechas con actividades y permite abrir el mes completo o elegir cualquier fecha.
+
+Administración puede agregar varias actividades, editar con motivo, cancelar conservando la bitácora y copiar una jornada a una fecha vacía. Las escrituras usan funciones transaccionales con versión e idempotencia. La lectura sigue disponible para cuentas activas; las tres cuentas administradoras existentes no cambian de rol. El historial consulta todos los cambios de las actividades de la fecha, incluso las canceladas.
+
+Compras incorpora lo agendado, permite excluir o ajustar solo para esa compra y añadir extras. Cambiar de fecha limpia los extras de la fecha anterior. Al recargar la agenda se conservan los extras, pero se reemplazan los ajustes y exclusiones de actividades agendadas. Si cambió el calendario, se muestra la agenda actual y se pide revisar o recargar; el servidor vuelve a verificar su versión al guardar. Las compras anteriores siguen inmutables. El calendario por sí solo no se usa como evidencia de venta.
+
+Capturar una nueva jornada exige confirmar las actividades reales. Las existentes se corrigen mediante el flujo con historial; agregar recibos conserva su clasificación. El conteo tiene una entrada propia desde Inventario, admite búsqueda e importación y no crea días de venta. Productos nuevos en un archivo de existencias deben darse de alta primero en Catálogo. La existencia incluye esos conteos y descuenta ventas posteriores.
+
+Estado: preparado en la rama codex/jornadas-calendar-ui. No aplicar la migración ni publicar esta versión hasta revisar el flujo con el personal. Antes de publicar: respaldo de producción comprobado, migración y prueba de permisos, agenda mixta, fecha vacía, copia, cancelación con historial, compra con extras, cambio de agenda con compra abierta, captura real y conteo independiente. La vista local usa datos sintéticos; las pruebas SQL ejecutan la migración real en PGlite.

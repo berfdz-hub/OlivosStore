@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Olivos Store · Inicio, registro, compras y resultados</title>
+    <title>Olivos Store · Jornadas, compras, inventario y reportes</title>
     <link rel="manifest" href="manifest.json" />
     <link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
@@ -61,29 +61,14 @@
       <div class="wrap">
         <button
           class="dashboard-mode on"
-          data-view="inicio"
+          data-view="jornadas"
           aria-current="page"
         >
-          Inicio</button
-        ><button
-          class="dashboard-mode"
-          data-view="registro"
-          aria-current="false"
-        >
-          Registrar</button
-        ><button
-          class="dashboard-mode"
-          data-view="planificador"
-          aria-current="false"
-        >
-          Compras</button
-        ><button
-          class="dashboard-mode"
-          data-view="resumen"
-          aria-current="false"
-        >
-          Resultados
-        </button>
+          Jornadas</button
+        ><button class="dashboard-mode" data-view="planificador">Compras</button
+        ><button class="dashboard-mode" data-view="inventario">
+          Inventario</button
+        ><button class="dashboard-mode" data-view="resumen">Reportes</button>
       </div>
     </div>
 
@@ -94,7 +79,6 @@
       id="tabbar"
     >
       <button data-tab="resumen">Resumen</button
-      ><button data-tab="calendario">Calendario</button
       ><button data-tab="productos">Productos</button
       ><button data-tab="comparativa">Comparaciones</button
       ><button data-tab="calor">Venta por hora</button
@@ -450,6 +434,24 @@
             </section>
             <section data-planner-step="" hidden>
               <h3 tabindex="-1">¿Qué habrá ese día?</h3>
+              <div id="plannerScheduleNotice" role="status"></div>
+              <div class="row-actions">
+                <button
+                  type="button"
+                  class="btn sec"
+                  id="plannerReloadSchedule"
+                  hidden
+                >
+                  Recargar agenda y conservar extras</button
+                ><button
+                  type="button"
+                  class="btn sec"
+                  id="plannerKeepSchedule"
+                  hidden
+                >
+                  Revisé los cambios; conservar mi selección
+                </button>
+              </div>
               <div id="predActivities"></div>
             </section>
             <section data-planner-step="" hidden>
@@ -581,104 +583,135 @@
           </div>
         </details>
       </section>
-      <div class="pane" id="pane-calendario">
-        <h2 class="section-title" style="margin-top: 20px">
-          Calendario de partidos
-        </h2>
-        <p class="footnote" style="margin-top: 6px">
-          Agenda partidos con anticipación (no necesitas tener capturada la
-          venta de ese día todavía) para que la app avise cuántos hay agendados.
-        </p>
-        <div id="calMsg"></div>
-        <div class="card noprint" style="margin-top: 14px">
-          <h3
-            style="
-              font-size: 15px;
-              font-family: &quot;Source Sans 3&quot;;
-              font-weight: 700;
-              margin-bottom: 10px;
-            "
-          >
-            Agendar partido
-          </h3>
-          <form id="formSchedGame" class="grid grid4">
-            <div class="field" style="margin-bottom: 0">
-              <label>Fecha</label><input type="date" id="sgDate" required />
-            </div>
-            <div class="field" style="margin-bottom: 0">
-              <label>Hora</label><input type="time" id="sgTime" required />
-            </div>
-            <div class="field" style="margin-bottom: 0">
-              <label>Deporte</label>
-              <select id="sgSport">
-                <option value="futbol">Fútbol</option>
-                <option value="beisbol">Béisbol / Softbol</option>
-                <option value="otro">Otro</option>
-              </select>
-            </div>
-            <div class="field" style="margin-bottom: 0">
-              <label>Tipo de evento</label>
-              <select id="sgEventType">
-                <option value="normal">Partido normal</option>
-                <option value="club_puebla">Club Puebla</option>
-                <option value="especial">Otro evento especial</option>
-              </select>
-            </div>
-            <div class="field" style="margin-bottom: 0">
-              <label>Nota (opcional)</label
-              ><input
-                type="text"
-                id="sgNotes"
-                placeholder="ej. vs. equipo tal"
-              />
-            </div>
-            <div style="grid-column: 1/-1">
-              <button class="btn sm" type="submit">Agendar</button>
-            </div>
-          </form>
-        </div>
-
-        <h3
-          style="
-            font-size: 15px;
-            font-family: &quot;Source Sans 3&quot;;
-            font-weight: 700;
-            margin: 20px 0 10px;
-          "
-        >
-          Próximo fin de semana
-        </h3>
-        <div id="weekendNotice"></div>
-
-        <h3
-          style="
-            font-size: 15px;
-            font-family: &quot;Source Sans 3&quot;;
-            font-weight: 700;
-            margin: 20px 0 10px;
-          "
-        >
-          Todos los partidos agendados
-        </h3>
-        <div class="card">
-          <div class="scroll">
-            <table id="tblSchedGames">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Hora</th>
-                  <th>Deporte</th>
-                  <th>Nota</th>
-                  <th>Agendado por</th>
-                  <th class="noprint"></th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+      <section class="pane" id="pane-jornadas" aria-label="Jornadas">
+        <div class="journey-heading">
+          <div>
+            <div class="eyebrow">Organiza la tienda por día</div>
+            <h2 class="section-title">Jornadas</h2>
+            <p>Agenda actividades, prepara la compra y registra las ventas.</p>
           </div>
+          <a class="btn sec" href="#registro">Ventas y correcciones</a>
         </div>
-      </div>
-
+        <div id="journeyMsg" role="status" aria-live="polite"></div>
+        <div class="journey-layout">
+          <section class="card journey-picker" aria-label="Calendario">
+            <div class="row-actions">
+              <button
+                type="button"
+                class="btn sec sm"
+                id="journeyPrev"
+                aria-label="Mes anterior"
+              >
+                ←
+              </button>
+              <h3 id="journeyMonth"></h3>
+              <button
+                type="button"
+                class="btn sec sm"
+                id="journeyNext"
+                aria-label="Mes siguiente"
+              >
+                →
+              </button>
+            </div>
+            <div class="row-actions">
+              <button type="button" class="btn sec sm" id="journeyToday">
+                Hoy</button
+              ><button type="button" class="btn sec sm" id="journeyView">
+                Ver como lista</button
+              ><button type="button" class="btn sec sm" id="journeyRefresh">
+                Actualizar
+              </button>
+            </div>
+            <div class="field">
+              <label for="journeyDate">Ir a una fecha</label
+              ><input type="date" id="journeyDate" />
+            </div>
+            <div id="journeyCalendar" class="journey-calendar"></div>
+          </section>
+          <section
+            class="card journey-detail"
+            aria-label="Detalle de la jornada"
+          >
+            <h2 id="journeyTitle"></h2>
+            <p id="journeyTotal"></p>
+            <div class="row-actions journey-primary">
+              <button type="button" class="btn" id="journeyBuy">
+                Preparar compra</button
+              ><a class="btn sec" id="journeyCapture" href="operador.html"
+                >Registrar ventas</a
+              >
+            </div>
+            <p id="journeyPastHint" class="hint" hidden>
+              Las compras se preparan para hoy o una fecha futura. En fechas
+              pasadas puedes registrar ventas y revisar actividades.
+            </p>
+            <h3>Actividades del día</h3>
+            <p class="hint">
+              Lo agendado es una previsión. Al registrar ventas se confirma lo
+              que realmente ocurrió.
+            </p>
+            <div id="journeyActivities"></div>
+            <div class="row-actions" data-calendar-admin hidden>
+              <button type="button" class="btn sec" id="journeyAdd">
+                + Agregar actividades</button
+              ><button type="button" class="btn sec" id="journeyDuplicateOpen">
+                Copiar a otra fecha
+              </button>
+            </div>
+            <form id="journeyForm" hidden class="journey-form">
+              <h3 id="journeyEditTitle"></h3>
+              <input type="hidden" id="journeyCancelFlag" />
+              <div id="journeyEditor"></div>
+              <div class="field">
+                <label for="journeyNotes">Nota (opcional)</label
+                ><input id="journeyNotes" maxlength="1000" />
+              </div>
+              <div class="field" id="journeyReasonField" hidden>
+                <label for="journeyReason"
+                  >Motivo del cambio · queda en el historial</label
+                ><textarea
+                  id="journeyReason"
+                  minlength="8"
+                  maxlength="1000"
+                ></textarea>
+              </div>
+              <div class="row-actions">
+                <button class="btn" id="journeySave" type="submit">
+                  Guardar en calendario</button
+                ><button class="btn sec" id="journeyClose" type="button">
+                  Cerrar sin guardar
+                </button>
+              </div>
+            </form>
+            <form id="journeyDuplicate" hidden class="journey-form">
+              <h3>Copiar actividades a otra fecha</h3>
+              <p>
+                Se copiarán a una fecha vacía; después podrás ajustar los
+                inicios.
+              </p>
+              <div class="field">
+                <label for="journeyCopyDate">Fecha destino</label
+                ><input type="date" id="journeyCopyDate" required />
+              </div>
+              <div class="row-actions">
+                <button class="btn" type="submit">Copiar actividades</button
+                ><button
+                  class="btn sec"
+                  type="button"
+                  id="journeyDuplicateClose"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </form>
+            <details id="journeyHistory" data-calendar-admin hidden>
+              <summary>Historial de cambios del calendario</summary>
+              <ol id="journeyHistoryRows"></ol>
+            </details>
+          </section>
+        </div>
+      </section>
       <div class="pane" id="pane-productos">
         <h2 class="section-title" style="margin-top: 20px">
           Productos del periodo
@@ -1130,6 +1163,15 @@
       </div>
 
       <div class="pane" id="pane-inventario">
+        <div class="journey-heading">
+          <div>
+            <h2 class="section-title">Inventario</h2>
+            <p>Registra lo que hay y lo que entra o sale de la tienda.</p>
+          </div>
+          <a class="btn" href="operador.html?task=inventario"
+            >Contar o importar existencias</a
+          >
+        </div>
         <div class="card">
           <h3>Registrar entrada o salida</h3>
           <form id="formMovement">

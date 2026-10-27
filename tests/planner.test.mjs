@@ -5,13 +5,14 @@ import { parseHTML } from "linkedom";
 import { initPlanner, readPlannerAnswers } from "../lib/planner.js";
 import { initGroupEditor } from "../lib/event-groups.js";
 import { businessDate } from "../lib/csv.js";
-function wizard(calculate = () => true) {
+function wizard(calculate = () => true, getSchedule = () => []) {
   const { document, window } = parseHTML(
     fs.readFileSync(new URL("../reportes.html", import.meta.url), "utf8"),
   );
   const el = (id) => document.getElementById(id);
   const ui = initPlanner({
     root: document,
+    getSchedule,
     onCalculate: () => calculate(readPlannerAnswers(document)),
     onInvalidate: () => {},
   });
@@ -137,4 +138,84 @@ test("audited activity editor preserves recorded historical ends, but clears one
   start.dispatchEvent(new window.Event("change", { bubbles: true }));
   assert.equal(editor.read()[0].slots[0].end, "");
   assert.equal(groups[0].slots[0].end, "11:00");
+});
+
+test("calendar imports once, extra activities stay local, and changes require review", () => {
+  const date = businessDate(),
+    activity = {
+      type: "futbol",
+      teamMode: "club_puebla",
+      team: "Club Puebla",
+      games: 1,
+      slots: [{ start: "11:00", end: "" }],
+    };
+  let rows = [{ id: "s1", date, version: 1, activity }];
+  const w = wizard(
+    () => true,
+    () => rows,
+  );
+  w.ui.openDate(date);
+  assert.equal(readPlannerAnswers(w.document).groups.length, 1);
+  assert.equal(readPlannerAnswers(w.document).groups[0].scheduleId, "s1");
+  w.add("baseball");
+  w.value("predActivities-1-games", "3");
+  assert.equal(rows.length, 1, "extra is not a calendar write");
+  w.click("plannerNext");
+  w.click("btnPredict");
+  assert(w.ui.hasResults());
+  rows = [
+    { ...rows[0], version: 2, activity: { ...activity, games: 2, slots: [] } },
+  ];
+  assert.equal(w.ui.checkSchedule(), false);
+  assert(!w.ui.hasResults());
+  w.click("btnPredict");
+  assert(!w.ui.hasResults(), "stale selection cannot calculate");
+  w.click("plannerReloadSchedule");
+  assert.deepEqual(
+    readPlannerAnswers(w.document).groups.map((g) => g.games),
+    [2, 3],
+  );
+  w.ui.checkSchedule();
+  assert.equal(
+    readPlannerAnswers(w.document).groups.length,
+    2,
+    "refresh does not duplicate",
+  );
+  w.document.querySelector('[data-remove-activity="0"]').click();
+  assert.equal(rows.length, 1, "exclusion is local to purchase");
+  w.click("plannerNext");
+  w.click("btnPredict");
+  assert(w.ui.hasResults());
+  w.ui.openDate("2099-01-01");
+  assert.equal(
+    readPlannerAnswers(w.document).groups.length,
+    0,
+    "changing date does not carry extras to another day",
+  );
+});
+test("reopening a saved purchase detects cancelled activities and preserves the old selection until reviewed", () => {
+  const date = businessDate(),
+    activity = {
+      type: "futbol",
+      teamMode: "academy",
+      team: "",
+      games: 2,
+      slots: [],
+    };
+  const w = wizard(
+    () => true,
+    () => [{ id: "s1", date, version: 2, status: "cancelled", activity }],
+  );
+  w.ui.set({
+    targetDate: date,
+    groups: [{ ...activity, scheduleId: "s1", scheduleVersion: 1 }],
+    scheduleFingerprint: JSON.stringify([{ id: "s1", version: 1 }]),
+  });
+  assert.equal(w.ui.checkSchedule(), false);
+  assert.equal(readPlannerAnswers(w.document).groups.length, 1);
+  w.click("plannerKeepSchedule");
+  w.click("plannerNext");
+  w.click("btnPredict");
+  assert(w.ui.hasResults());
+  assert.equal(readPlannerAnswers(w.document).scheduleFingerprint, "[]");
 });

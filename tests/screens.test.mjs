@@ -1,3 +1,8 @@
+import {
+  activitiesForDate,
+  actualActivities,
+  dayClassification,
+} from "../lib/schedule.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -62,6 +67,9 @@ function screen(name, globals = {}) {
     initGroupEditor: (options) =>
       initGroupEditor({ ...options, root: document }),
     validateGroups,
+    activitiesForDate,
+    actualActivities,
+    dayClassification,
     totalGames,
     groupLabel,
     predictPurchase,
@@ -198,12 +206,12 @@ test("planner navigation hides report filters and restores them when returning t
   s.run('showPane("inventario")');
   assert.equal(
     s.document
-      .querySelector('[data-view="registro"]')
+      .querySelector('[data-view="inventario"]')
       .getAttribute("aria-current"),
     "page",
   );
   s.run('showPane("usuarios")');
-  assert(s.document.getElementById("pane-inicio").classList.contains("on"));
+  assert(s.document.getElementById("pane-jornadas").classList.contains("on"));
 });
 
 test("activity answers reach the real calculation and save with the reviewed agenda", async () => {
@@ -226,6 +234,7 @@ test("activity answers reach the real calculation and save with the reviewed age
     PRED_ITEMS=[{ticket_id:'t',product_id:'p',qty:10}];
     PRED_INV=[{sale_day_id:'d',product_id:'p',physical_count:5,counted_at:pastDate+'T23:00:00Z',count_source:'manual'}];
     plannerUI=initPlanner({root:document,onCalculate:()=>{renderPrediction();return !!LAST_PREDICTION;},onInvalidate:()=>{LAST_PREDICTION=null;}});
+    journeysUI={load:async()=>{}};
     loadAll=async()=>{};
     renderPrediction();
   `);
@@ -351,7 +360,9 @@ test("purchase review requires confirmation, preserves the prediction and enforc
       },
     },
   });
-  s.run("loadAll=async()=>{};renderPrediction();");
+  s.run(
+    "journeysUI={load:async()=>{}};plannerUI={checkSchedule:()=>true,fingerprint:()=>'[]',hasResults:()=>true};loadAll=async()=>{};renderPrediction();",
+  );
   assert.equal(s.document.querySelectorAll('img[src="x"],[onerror]').length, 0);
   await s.run("savePurchasePlan()");
   assert.equal(saved, null);
@@ -367,4 +378,63 @@ test("purchase review requires confirmation, preserves the prediction and enforc
   assert.equal(saved.name, "save_purchase_plan");
   assert.equal(saved.args.p_plan.rows[0].expected, 10);
   assert.equal(saved.args.p_plan.rows[0].chosen, 4);
+});
+
+test("capture uses confirmed actual activities, strips calendar references and blocks unconfirmed plans", async () => {
+  let saved;
+  const s = screen("operador", {
+    saveDay: async (client, payload) => {
+      saved = payload;
+      return { inserted: 1, skipped: 0, repaired: 0 };
+    },
+    supabase: {},
+  });
+  s.document.getElementById("fDate").value = businessDate();
+  s.run(
+    "captureDate=document.getElementById('fDate').value;captureReady=true;resetForm=()=>{};reloadCatalog=async()=>{};captureGroups.set([{type:'beisbol',teamMode:'none',team:'',games:3,slots:[],scheduleId:'planned',scheduleVersion:1}]);",
+  );
+  await assert.rejects(() => s.run("submitSingleDay()"), /Confirma/);
+  assert.equal(saved, undefined);
+  s.document.getElementById("captureConfirmed").checked = true;
+  await s.run("submitSingleDay()");
+  assert.equal(saved.day.sport, "beisbol");
+  assert.equal(saved.day.event_groups[0].games, 3);
+  assert.equal(saved.day.event_groups[0].scheduleId, undefined);
+  assert.equal(saved.counts.length, 0);
+});
+test("independent inventory searches products and retries a failed save with the same request", async () => {
+  const requests = [];
+  const s = screen("operador", {
+    supabase: {
+      rpc: async (name, p) => {
+        requests.push({ name, p });
+        return requests.length === 1
+          ? { error: { message: "No hay conexión" } }
+          : { data: 1 };
+      },
+    },
+  });
+  s.run(
+    "CATALOG=[{id:'p',name:'Agua',sell_price:20},{id:'q',name:'Coca',sell_price:25}];renderInventoryInputs();resetForm=()=>{};",
+  );
+  assert.equal(
+    s.document.querySelectorAll("#tblInv tr:not([hidden]) input").length,
+    0,
+  );
+  s.document.getElementById("inventorySearch").value = "agua";
+  s.run("filterInventory()");
+  assert.equal(
+    s.document.querySelectorAll("#tblInv tr:not([hidden]) input").length,
+    1,
+  );
+  s.document.querySelector(".invCount").value = "0";
+  s.document.getElementById("fCountAt").value = businessDate() + "T00:00";
+  await assert.rejects(
+    () => s.run("submitInventory()"),
+    (e) => /conexión/.test(e.message),
+  );
+  await s.run("submitInventory()");
+  assert.equal(requests[0].name, "save_inventory_count");
+  assert.equal(requests[0].p.p_client_ref, requests[1].p.p_client_ref);
+  assert.equal(requests[1].p.p_counts[0].physical_count, 0);
 });

@@ -281,3 +281,31 @@ test("missing schema fails closed and atomic save propagates database failures",
     /rollback/,
   );
 });
+
+test("standalone counts feed stock without a fictitious sale day, while scoped-out sale counts remain excluded", () => {
+  const data = {
+    days: [],
+    tickets: [{ id: "s", ts: "2026-10-26T19:00:00Z" }],
+    items: [{ ticket_id: "s", product_id: "p", qty: 2 }],
+    counts: [
+      {
+        sale_day_id: null,
+        product_id: "p",
+        physical_count: 12,
+        counted_at: "2026-10-26T18:00:00Z",
+        count_source: "manual",
+      },
+      {
+        sale_day_id: "out-of-scope",
+        product_id: "q",
+        physical_count: 999,
+        counted_at: "2026-10-26T18:00:00Z",
+      },
+    ],
+  };
+  const stock = inventoryAt(data, "2026-10-26T20:00:00Z");
+  assert.equal(stock.get("p").value, 10);
+  assert.equal(stock.get("p").date, "2026-10-26");
+  assert.equal(stock.has("q"), false);
+  assert.equal(inventoryAt(data, "2026-10-26T17:00:00Z").size, 0);
+});

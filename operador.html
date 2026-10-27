@@ -32,11 +32,18 @@
     </div>
     <nav aria-label="Navegación principal" class="dashboard-modes noprint">
       <div class="wrap">
-        <a class="dashboard-mode" href="reportes.html#inicio">Inicio</a
-        ><a class="dashboard-mode on" href="operador.html" aria-current="page"
-          >Registrar</a
+        <a
+          class="dashboard-mode on"
+          href="reportes.html#jornadas"
+          id="captureNavJourneys"
+          >Jornadas</a
         ><a class="dashboard-mode" href="reportes.html#planificador">Compras</a
-        ><a class="dashboard-mode" href="reportes.html#resumen">Resultados</a>
+        ><a
+          class="dashboard-mode"
+          href="reportes.html#inventario"
+          id="captureNavInventory"
+          >Inventario</a
+        ><a class="dashboard-mode" href="reportes.html#resumen">Reportes</a>
       </div>
     </nav>
 
@@ -44,33 +51,24 @@
       <div id="weekendNotice"></div>
 
       <div class="eyebrow">Captura de datos</div>
-      <h2 class="section-title">Nuevo día de venta</h2>
-      <p class="footnote" style="margin-top: 6px">
-        Llena la fecha, los partidos, sube el CSV de recibos y (si tienes) el
-        conteo físico de algunos productos. Al guardar, todo queda en la base de
-        datos para los reportes del administrador.
+      <h2 id="captureTitle" class="section-title">Registrar ventas</h2>
+      <p id="captureIntro" class="footnote" style="margin-top: 6px">
+        Elige la fecha, sube tus recibos y confirma las actividades que
+        realmente hubo. Puedes guardar y volver más tarde.
       </p>
 
       <div id="msgBox"></div>
 
       <form id="formDay">
-        <div class="card">
-          <h3
-            style="
-              font-size: 16px;
-              font-family: &quot;Source Sans 3&quot;;
-              font-weight: 700;
-              margin-bottom: 14px;
-            "
-          >
-            Datos del día
-          </h3>
-          <div class="grid grid4">
-            <div class="field">
-              <label>Fecha</label>
-              <input type="date" id="fDate" required />
-              <div class="hint" id="fDateDay"></div>
-            </div>
+        <div id="captureDateCard" class="card">
+          <h3>1. Fecha de las ventas</h3>
+          <div class="field">
+            <label>Fecha</label>
+            <input type="date" id="fDate" required />
+            <div class="hint" id="fDateDay"></div>
+          </div>
+          <div id="existingDayNotice"></div>
+          <div hidden id="captureLegacyFields">
             <div class="field">
               <label>Deporte</label>
               <select id="fSport">
@@ -89,13 +87,6 @@
                 <option value="evento_especial">Evento especial</option>
               </select>
             </div>
-            <div class="field">
-              <label>Tarifa estacionamiento</label>
-              <input type="number" id="fRate" value="30" min="0" />
-            </div>
-          </div>
-          <div id="existingDayNotice"></div>
-          <div class="grid grid2">
             <div class="field">
               <label>Nombre del evento (opcional)</label>
               <input
@@ -127,26 +118,8 @@
               </div>
             </div>
           </div>
-          <div class="field">
-            <label>Notas (opcional)</label>
-            <textarea
-              id="fNotes"
-              placeholder="Cualquier cosa rara del día que el admin deba saber..."
-            ></textarea>
-          </div>
-          <details>
-            <summary>Actividades de la jornada</summary>
-            <p class="hint">
-              Indica qué hubo y cuántos partidos se jugaron para mejorar las
-              próximas compras. Los inicios son opcionales. Si el día ya existe,
-              cambia sus actividades en Registrar → Corregir / solicitar para
-              conservar el historial.
-            </p>
-            <div id="captureGroups"></div>
-          </details>
         </div>
-
-        <div class="card">
+        <div id="captureReceiptsCard" class="card">
           <h3
             style="
               font-size: 16px;
@@ -155,29 +128,7 @@
               margin-bottom: 4px;
             "
           >
-            Partidos y estacionamiento
-          </h3>
-          <p class="footnote" style="margin-bottom: 12px">
-            Agrega un partido por cada juego del día — incluye los amistosos o
-            de liga entre semana. Si ese partido no cobró estacionamiento,
-            desmarca la casilla.
-          </p>
-          <div id="games"></div>
-          <button type="button" class="btn sec sm" data-action="addGame">
-            + Agregar partido
-          </button>
-        </div>
-
-        <div class="card">
-          <h3
-            style="
-              font-size: 16px;
-              font-family: &quot;Source Sans 3&quot;;
-              font-weight: 700;
-              margin-bottom: 4px;
-            "
-          >
-            Recibos del punto de venta
+            2. Sube los recibos
           </h3>
           <p class="footnote" style="margin-bottom: 12px">
             El CSV "receipts" exportado del POS. Puedes subir un archivo de
@@ -193,31 +144,64 @@
             registrado)</label
           >
         </div>
-
-        <div class="card" id="cardInv">
-          <h3
-            style="
-              font-size: 16px;
-              font-family: &quot;Source Sans 3&quot;;
-              font-weight: 700;
-              margin-bottom: 4px;
-            "
+        <section class="card" id="captureActualCard">
+          <h3>3. Confirma lo que realmente hubo</h3>
+          <p class="hint" id="captureAgendaHint">
+            Revisa las actividades antes de guardar.
+          </p>
+          <fieldset id="captureActualFields" class="plain-fieldset">
+            <div id="captureGroups"></div>
+            <div class="field">
+              <label>Notas (opcional)</label>
+              <textarea
+                id="fNotes"
+                placeholder="Cualquier cosa rara del día que el admin deba saber..."
+              ></textarea>
+            </div>
+          </fieldset>
+          <label class="check-option" id="captureConfirmLabel"
+            ><input type="checkbox" id="captureConfirmed" /> Confirmo que estas
+            actividades ocurrieron; ajusté lo que cambió.</label
           >
-            Conteo físico de inventario (opcional)
-          </h3>
+        </section>
+
+        <details class="card" id="captureParking">
+          <summary>Estacionamiento (opcional)</summary>
+          <p class="hint">
+            Solo agrega los partidos de los que tengas datos de autos.
+          </p>
+          <div class="field">
+            <label>Tarifa estacionamiento</label>
+            <input type="number" id="fRate" value="30" min="0" />
+          </div>
+          <div id="games"></div>
+          <button type="button" class="btn sec sm" data-action="addGame">
+            + Agregar partido
+          </button>
+        </details>
+        <p id="captureInventoryLink" class="hint">
+          El inventario se captura por separado en
+          <a href="operador.html?task=inventario"
+            >Contar o importar existencias</a
+          >.
+        </p>
+
+        <div hidden class="card" id="cardInv">
           <p class="footnote" style="margin-bottom: 12px">
             Puedes importar las existencias actuales de Loyverse o capturarlas
             manualmente. Los recibos de venta no contienen inventario.
           </p>
-          <div
-            style="
-              border: 1px solid var(--line);
-              border-radius: 10px;
-              padding: 14px;
-              margin-bottom: 14px;
-              background: var(--surface-2);
-            "
-          >
+          <div class="field">
+            <label for="fCountAt"
+              >Fecha y hora de estas existencias (Ciudad de México)</label
+            ><input type="datetime-local" id="fCountAt" />
+            <div class="hint">
+              Usa la hora del conteo o de la exportación. El inventario
+              importado es una referencia del sistema.
+            </div>
+          </div>
+          <details id="inventoryImport">
+            <summary>Importar archivo de existencias</summary>
             <label style="margin-bottom: 6px"
               >Importar existencias de Loyverse</label
             >
@@ -228,20 +212,23 @@
             </p>
             <input type="file" id="fInventoryCsv" accept=".csv,text/csv" />
             <div id="inventoryCsvSummary"></div>
-            <div class="field">
-              <label for="fCountAt"
-                >Fecha y hora de estas existencias (Ciudad de México)</label
-              ><input type="datetime-local" id="fCountAt" />
-              <div class="hint">
-                Usa la hora del conteo o de la exportación. El inventario
-                importado es una referencia del sistema.
-              </div>
-            </div>
-          </div>
+          </details>
           <p class="footnote" style="margin-bottom: 12px">
             Revisa las cantidades importadas o llena solamente los productos que
             contaste. Los demás se dejan vacíos.
           </p>
+          <div class="field">
+            <label for="inventorySearch">Buscar producto para contar</label
+            ><input
+              id="inventorySearch"
+              type="search"
+              placeholder="Ej. agua, coca, hamburguesa"
+            />
+            <p class="hint" id="inventorySearchHint">
+              Busca un producto o importa el archivo. Solo se guardarán
+              cantidades llenadas; 0 significa que no hay existencias.
+            </p>
+          </div>
           <div class="scroll">
             <table id="tblInv">
               <thead>
@@ -406,14 +393,18 @@
           </div>
         </div>
 
-        <div class="row-actions">
+        <div class="row-actions capture-save">
           <button class="btn" type="submit" id="btnSave">Guardar día</button>
         </div>
       </form>
 
-      <div class="eyebrow" style="margin-top: 44px">Historial</div>
-      <h2 class="section-title">Días capturados recientemente</h2>
-      <div class="card" style="margin-top: 16px">
+      <div data-sale-history="" class="eyebrow" style="margin-top: 44px">
+        Historial
+      </div>
+      <h2 data-sale-history="" class="section-title">
+        Días capturados recientemente
+      </h2>
+      <div id="captureHistoryCard" class="card" style="margin-top: 16px">
         <div class="scroll">
           <table id="tblDays">
             <thead>
