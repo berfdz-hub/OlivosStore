@@ -1166,17 +1166,34 @@
       </div>
 
       <section class="pane" id="pane-inventario" aria-label="Inventario">
-        <div class="journey-heading">
+        <div class="journey-heading inventory-heading">
           <div>
             <h2 class="section-title">Inventario</h2>
             <p id="inventoryStatus">Cargando productos…</p>
           </div>
           <div class="row-actions">
-            <a class="btn" href="operador.html?task=inventario"
-              >Contar existencias</a
-            ><button class="btn sec" type="button" id="inventoryReceipt">
+            <button class="btn" type="button" id="inventoryReceipt">
               Recibí mercancía
             </button>
+            <a class="btn sec" href="operador.html?task=inventario"
+              >Contar existencias</a
+            >
+            <details class="inventory-other" id="inventoryOtherActions">
+              <summary>Más acciones</summary>
+              <div>
+                <button class="btn sec sm" type="button" id="inventoryWaste">
+                  Registrar merma
+                </button>
+                <button
+                  class="btn sec sm"
+                  type="button"
+                  id="inventoryAdjustment"
+                >
+                  Ajuste justificado
+                </button>
+                <a href="operador.html?task=inventario">Importar existencias</a>
+              </div>
+            </details>
           </div>
         </div>
         <div
@@ -1185,116 +1202,6 @@
           aria-live="polite"
           hidden
         ></div>
-        <div class="inventory-toolbar">
-          <div class="field">
-            <label for="inventoryProductSearch">Buscar producto</label
-            ><input
-              type="search"
-              id="inventoryProductSearch"
-              placeholder="Nombre del producto"
-            />
-          </div>
-          <div class="field">
-            <label for="inventoryPlan">Compra para una jornada</label
-            ><select id="inventoryPlan">
-              <option value="">Sin jornada seleccionada</option>
-            </select>
-          </div>
-          <button class="btn sec" type="button" id="inventoryPrepare">
-            Preparar / revisar compra
-          </button>
-        </div>
-        <p class="hint" id="inventoryPlanNote"></p>
-        <div class="inventory-layout" id="inventoryLayout">
-          <section
-            class="card inventory-list"
-            aria-label="Productos del inventario"
-          >
-            <div class="inventory-list-heading">
-              <span id="inventoryListCount"></span
-              ><label class="check-option"
-                ><input type="checkbox" id="inventoryInactive" /> Incluir
-                inactivos</label
-              >
-            </div>
-            <table id="tblCurrentStock">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Tenemos</th>
-                  <th>Comprar</th>
-                  <th>Último surtido</th>
-                </tr>
-              </thead>
-              <tbody id="inventoryProducts"></tbody>
-            </table>
-          </section>
-          <aside
-            class="card inventory-detail"
-            id="inventoryDetail"
-            aria-labelledby="inventoryDetailTitle"
-            hidden
-          >
-            <div class="inventory-detail-heading">
-              <h3 id="inventoryDetailTitle"></h3>
-              <button
-                class="btn sec sm"
-                type="button"
-                id="inventoryDetailClose"
-              >
-                Volver a lista
-              </button>
-            </div>
-            <div class="inventory-stock">
-              <span>Tenemos</span><strong id="inventoryDetailStock"></strong>
-            </div>
-            <dl id="inventoryDetailFacts"></dl>
-            <div class="row-actions">
-              <a
-                class="btn"
-                id="inventoryCountProduct"
-                href="operador.html?task=inventario"
-                >Contar este producto</a
-              ><button
-                type="button"
-                class="btn sec"
-                id="inventoryReceiptProduct"
-              >
-                Registrar surtido
-              </button>
-            </div>
-            <details>
-              <summary>Compra para la jornada</summary>
-              <div id="inventoryProductPurchase"></div>
-            </details>
-            <details>
-              <summary>Conteos, surtidos y mermas</summary>
-              <ul
-                class="inventory-timeline"
-                id="inventoryProductMovements"
-              ></ul>
-            </details>
-            <details>
-              <summary>Ventas y devoluciones</summary>
-              <ul class="inventory-timeline" id="inventoryProductSales"></ul>
-            </details>
-            <details>
-              <summary>Cálculo y comparación física</summary>
-              <div id="inventoryCalculation"></div>
-            </details>
-            <details id="inventoryAuditWrap">
-              <summary>Quién lo cambió · bitácora</summary>
-              <ul class="inventory-timeline" id="inventoryAudit"></ul>
-            </details>
-          </aside>
-        </div>
-        <div class="row-actions">
-          <button class="btn sec sm" type="button" id="inventoryWaste">
-            Registrar merma</button
-          ><button class="btn sec sm" type="button" id="inventoryAdjustment">
-            Ajuste justificado</button
-          ><a href="operador.html?task=inventario">Importar existencias</a>
-        </div>
         <section
           class="card inventory-movement"
           id="inventoryMovementPanel"
@@ -1374,6 +1281,137 @@
             </fieldset>
           </form>
         </section>
+        <div class="inventory-controls">
+          <div
+            class="inventory-filters"
+            id="inventoryFilters"
+            aria-label="Filtrar productos"
+          ></div>
+          <div class="inventory-search-row">
+            <div class="field">
+              <label for="inventoryProductSearch">Buscar producto</label
+              ><input
+                type="search"
+                id="inventoryProductSearch"
+                placeholder="Nombre o categoría del producto"
+              />
+            </div>
+            <details class="inventory-guide">
+              <summary>Cómo se calcula</summary>
+              <p>
+                <b>Último conteo + entradas − ventas y salidas.</b> Usamos los
+                datos que ya tienes. Las cantidades son estimadas, no un nuevo
+                conteo físico.
+              </p>
+              <p>
+                Un saldo negativo indica registros por revisar. «Sin conteo»
+                significa que falta una cantidad de partida. Si no se conoce la
+                hora del conteo, descontamos a partir del día siguiente.
+              </p>
+            </details>
+          </div>
+          <details class="inventory-buy-context" id="inventoryBuyContext">
+            <summary id="inventoryBuyLabel">Calcular qué comprar</summary>
+            <div class="inventory-toolbar">
+              <div class="field">
+                <label for="inventoryPlan">Compra para una jornada</label
+                ><select id="inventoryPlan">
+                  <option value="">Sin jornada seleccionada</option>
+                </select>
+              </div>
+              <button class="btn sec" type="button" id="inventoryPrepare">
+                Preparar / revisar compra
+              </button>
+            </div>
+            <p class="hint" id="inventoryPlanNote"></p>
+          </details>
+        </div>
+        <div class="inventory-layout" id="inventoryLayout">
+          <section
+            class="card inventory-list"
+            aria-label="Productos del inventario"
+          >
+            <div class="inventory-list-heading">
+              <span id="inventoryListCount"></span
+              ><label class="check-option"
+                ><input type="checkbox" id="inventoryInactive" /> Incluir
+                inactivos</label
+              >
+            </div>
+            <table id="tblCurrentStock">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Saldo estimado</th>
+                  <th>Comprar</th>
+                  <th>Último surtido</th>
+                </tr>
+              </thead>
+              <tbody id="inventoryProducts"></tbody>
+            </table>
+          </section>
+          <aside
+            class="card inventory-detail"
+            id="inventoryDetail"
+            aria-labelledby="inventoryDetailTitle"
+            hidden
+          >
+            <div class="inventory-detail-heading">
+              <h3 id="inventoryDetailTitle"></h3>
+              <button
+                class="btn sec sm"
+                type="button"
+                id="inventoryDetailClose"
+              >
+                Volver a lista
+              </button>
+            </div>
+            <div class="inventory-stock">
+              <span>Saldo estimado</span>
+              <div id="inventoryDetailStock"></div>
+            </div>
+            <p class="inventory-detail-note" id="inventoryDetailNote"></p>
+            <dl id="inventoryDetailFacts"></dl>
+            <div class="row-actions">
+              <a
+                class="btn"
+                id="inventoryCountProduct"
+                href="operador.html?task=inventario"
+                >Contar este producto</a
+              ><button
+                type="button"
+                class="btn sec"
+                id="inventoryReceiptProduct"
+              >
+                Registrar surtido
+              </button>
+            </div>
+            <details>
+              <summary>Compra para la jornada</summary>
+              <div id="inventoryProductPurchase"></div>
+            </details>
+            <details>
+              <summary>Conteos, surtidos y mermas</summary>
+              <ul
+                class="inventory-timeline"
+                id="inventoryProductMovements"
+              ></ul>
+            </details>
+            <details>
+              <summary>Ventas y devoluciones</summary>
+              <ul class="inventory-timeline" id="inventoryProductSales"></ul>
+            </details>
+            <details>
+              <summary>Cálculo y comparación física</summary>
+              <div id="inventoryCalculation"></div>
+            </details>
+            <details id="inventoryAuditWrap">
+              <summary>Quién lo cambió · bitácora</summary>
+              <ul class="inventory-timeline" id="inventoryAudit"></ul>
+            </details>
+          </aside>
+        </div>
+
         <details class="inventory-variations" id="inventoryVariations">
           <summary>Historial de variaciones</summary>
           <div class="grid grid2 inventory-history-dates">

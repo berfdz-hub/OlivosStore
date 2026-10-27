@@ -231,7 +231,7 @@ test("movement retry preserves its automatic timestamp and request; waste stores
     /guardado/,
   );
 });
-test("product detail escapes stored names and movement notes and keeps uncertain stock out of the main quantity", () => {
+test("product detail escapes stored data and shows uncertain stock as an estimate without making it trusted", () => {
   const { document, window } = page(),
     attack = "<img src=x onerror=alert(1)>";
   const h = history();
@@ -266,12 +266,120 @@ test("product detail escapes stored names and movement notes and keeps uncertain
     .dispatchEvent(new window.Event("click", { bubbles: true }));
   assert.match(
     document.getElementById("inventoryDetailStock").textContent,
-    /Por confirmar/,
+    /23.*Estimada/,
   );
+  assert.equal(inventoryRows(c)[0].have, null);
   assert.equal(document.querySelectorAll('img[src="x"],[onerror]').length, 0);
   assert(
     document
       .getElementById("inventoryProductMovements")
       .textContent.includes(attack),
+  );
+});
+
+test("historical counts and sales produce visible positive, zero and negative balances without changing source data", () => {
+  const h = {
+    days: [{ id: "d", date: "2026-09-28" }],
+    tickets: [{ id: "t", ts: "2026-09-29T16:00:00Z" }],
+    counts: [
+      ["p", 27],
+      ["q", 39],
+      ["r", 3],
+    ].map(([product_id, physical_count]) => ({
+      product_id,
+      physical_count,
+      sale_day_id: "d",
+      count_source: "legacy",
+    })),
+    items: [
+      ["p", 12],
+      ["q", 59],
+      ["r", 3],
+    ].map(([product_id, qty]) => ({ ticket_id: "t", product_id, qty })),
+    movements: [],
+  };
+  const original = JSON.stringify(h);
+  const rows = inventoryRows({
+    history: h,
+    products: ["p", "q", "r", "none"].map((id) => ({ id, name: id })),
+  });
+  const get = (id) => rows.find((r) => r.product.id === id);
+  assert.equal(get("p").estimate, 15);
+  assert.equal(get("p").state, "estimated");
+  assert.equal(get("q").estimate, -20);
+  assert.equal(get("q").state, "review");
+  assert.equal(get("r").estimate, 0);
+  assert.equal(get("r").state, "estimated");
+  assert.equal(get("none").estimate, null);
+  assert.equal(get("none").state, "missing");
+  assert(rows.every((r) => r.have === null));
+  assert.equal(JSON.stringify(h), original);
+});
+
+test("inventory filters separate estimated, negative and missing stock, while preserving search and physical comparison", () => {
+  const { document, window } = page();
+  const h = history();
+  h.counts[0].count_source = "legacy";
+  h.counts.push({
+    ...h.counts[0],
+    id: "cq",
+    product_id: "q",
+    physical_count: 1,
+  });
+  h.tickets = [{ id: "t", ts: "2026-10-26T17:00:00Z" }];
+  h.items = [{ ticket_id: "t", product_id: "q", qty: 4 }];
+  const c = {
+    history: h,
+    products: [
+      { id: "p", name: "Agua" },
+      { id: "q", name: "Banderilla" },
+      { id: "r", name: "Coca" },
+    ],
+    plans: [],
+    admin: false,
+  };
+  const ui = initInventoryView({
+    root: document,
+    context: () => c,
+    client: {},
+    refresh: async () => {},
+    onPurchase: () => {},
+  });
+  ui.render();
+  assert.equal(document.querySelectorAll("[data-inventory-product]").length, 3);
+  const click = (el) =>
+    el.dispatchEvent(new window.Event("click", { bubbles: true }));
+  click(document.querySelector('[data-stock-filter="review"]'));
+  assert.equal(document.querySelectorAll("[data-inventory-product]").length, 1);
+  assert.match(
+    document.getElementById("inventoryProducts").textContent,
+    /-3.*Saldo a revisar/,
+  );
+  click(document.querySelector('[data-inventory-product="q"]'));
+  assert.match(
+    document.getElementById("inventoryDetailNote").textContent,
+    /no son existencias físicas negativas/,
+  );
+  const verify = document.getElementById("inventoryVerify");
+  verify.value = "2";
+  verify.dispatchEvent(new window.Event("input"));
+  assert.match(
+    document.getElementById("inventoryVerifyResult").textContent,
+    /estimado: 5 unidades/,
+  );
+  click(document.getElementById("inventoryDetailClose"));
+  click(document.querySelector('[data-stock-filter="missing"]'));
+  assert.match(
+    document.getElementById("inventoryProducts").textContent,
+    /Coca.*Sin conteo/,
+  );
+  click(document.querySelector('[data-stock-filter="estimated"]'));
+  const search = document.getElementById("inventoryProductSearch");
+  search.value = "Banderilla";
+  search.dispatchEvent(new window.Event("input"));
+  assert.equal(document.querySelectorAll("[data-inventory-product]").length, 0);
+  assert.match(
+    document.getElementById("inventoryProducts").textContent,
+    /No hay productos/,
   );
 });

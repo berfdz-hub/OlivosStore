@@ -18,6 +18,11 @@ const store={
  inventory_counts:[{id:'c1',sale_day_id:'d1',product_id:'p1',physical_count:20,counted_at:day+'T17:00:00Z',count_source:'manual',opening_stock:null,sold:null}],
  day_corrections:[],correction_decisions:[],purchase_plans:[],inventory_movements:[],audit_log:[],scheduled_games:[{id:"s1",date:"2026-10-31",status:"scheduled",version:1,activity:{type:"futbol",teamMode:"club_puebla",team:"Club Puebla",games:1,slots:[{start:"11:00",end:""}]}},{id:"s2",date:"2026-10-31",status:"scheduled",version:1,activity:{type:"futbol",teamMode:"academy",team:"",games:2,slots:[{start:"09:00",end:""},{start:"11:30",end:""}]}}],app_settings:[{id:true,operators_see_all_days:true,operators_see_costs:true}]
 };store.products=store.products_view;
+for(const [id,name,physical_count,qty] of [['p3','Banderilla',27,12],['p4','Agua litro',39,59],['p5','Gomitas',3,3]]){
+ store.products_view.push({id,name,category:id==='p4'?'Bebidas':'Alimentos',sell_price:20,cost_price:8,active:true});
+ store.inventory_counts.push({id:'c'+id,sale_day_id:null,product_id:id,physical_count,counted_on:'2026-10-04',counted_at:null,count_source:'legacy'});
+ store.ticket_items_view.push({id:'i'+id,ticket_id:'t1',product_id:id,product_name_raw:name,qty,unit_price:20,unit_cost:8,line_net_amount:qty*20});
+}
 for(const [index,date] of ['2026-09-02','2026-09-09','2026-09-16','2026-09-05','2026-09-12','2026-09-19'].entries()){
  const id='sample'+index,qty=index<3?10:100;
  store.sale_days.push({id,date,sport:'futbol',status:'reviewed',day_type:'dia_partido',event_name:'Evento sintético',event_tags:['futbol'],created_by:'admin',profiles:{full_name:'Prueba local'}});
@@ -30,7 +35,7 @@ for(const [id,type,teamMode,games,qty] of [['sample3','futbol','club_puebla',1,3
  store.ticket_items_view.find(i=>i.ticket_id==='t'+id).qty=qty;
 }
 store.tickets=store.tickets_view;
-const previewKey='olivos-preview-2604-'+previewRole;
+const previewKey='olivos-preview-estimates-'+previewRole;
 try{const saved=JSON.parse(sessionStorage.getItem(previewKey)||'null');if(saved)Object.assign(store,saved);}catch{}
 addEventListener('pagehide',()=>sessionStorage.setItem(previewKey,JSON.stringify(store)));
 
