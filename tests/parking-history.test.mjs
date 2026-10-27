@@ -20,6 +20,7 @@ const ticket = {
   amount: 100,
 };
 test("parking uses charged cars for revenue and all parked cars for averages", () => {
+  assert.equal(parkingRows([day], [game], [])[0].total, null);
   const [r] = parkingRows([day], [game], [ticket]);
   assert.equal(r.tarifa, 30);
   assert.equal(r.ingreso, 240);
