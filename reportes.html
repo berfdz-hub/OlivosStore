@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Reportes · Olivos Store</title>
+    <title>Olivos Store · Inicio, registro, compras y resultados</title>
     <link rel="manifest" href="manifest.json" />
     <link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
@@ -23,14 +23,27 @@
           >
         </div>
         <div class="who">
+          <details class="admin-menu admin-only">
+            <summary>Administración</summary>
+            <div>
+              <button
+                class="btn-ghost"
+                data-action="tab"
+                data-tab-target="catalogo"
+              >
+                Catálogo y límites</button
+              ><button
+                class="btn-ghost"
+                data-action="tab"
+                data-tab-target="usuarios"
+              >
+                Usuarios
+              </button>
+            </div>
+          </details>
           <span id="whoName"></span>
           <span class="role-pill" id="rolePill">ADMIN</span>
-          <a
-            href="operador.html"
-            class="btn-ghost"
-            style="text-decoration: none"
-            >Capturar día</a
-          >
+
           <button class="btn-ghost" data-action="print">
             Exportar / imprimir
           </button>
@@ -42,66 +55,74 @@
     <div
       class="dashboard-modes noprint"
       id="dashboardModes"
-      role="tablist"
-      aria-label="Vistas principales"
+      role="navigation"
+      aria-label="Navegación principal"
     >
       <div class="wrap">
         <button
           class="dashboard-mode on"
-          role="tab"
-          aria-selected="true"
-          data-view="resumen"
-          data-help="Para juntas y decisiones: ventas, utilidad, tendencias y resultados del periodo."
+          data-view="inicio"
+          aria-current="page"
         >
-          Vista ejecutiva
-        </button>
-        <button
+          Inicio</button
+        ><button
           class="dashboard-mode"
-          role="tab"
-          aria-selected="false"
-          data-view="operacion"
-          data-help="Para el trabajo diario: detalle por fecha, pendientes, inventario y compras próximas."
+          data-view="registro"
+          aria-current="false"
         >
-          Vista operativa
-        </button>
-        <button
+          Registrar</button
+        ><button
           class="dashboard-mode"
-          role="tab"
-          aria-selected="false"
-          data-view="guiada"
-          data-help="Hallazgos, alertas y resultados del periodo."
-        >
-          Vista guiada
-        </button>
-        <button
           data-view="planificador"
-          data-help="Prepara una compra paso a paso con eventos similares, existencias y límites de almacenamiento."
-          aria-selected="false"
-          role="tab"
-          class="dashboard-mode"
+          aria-current="false"
         >
-          Planificar compra
+          Compras</button
+        ><button
+          class="dashboard-mode"
+          data-view="resumen"
+          aria-current="false"
+        >
+          Resultados
         </button>
       </div>
     </div>
 
-    <div class="tabbar noprint" id="tabbar">
-      <button data-tab="calendario">Calendario</button>
-      <button data-tab="productos">Productos</button>
-      <button data-tab="calor">Mapa de calor</button>
-      <button data-tab="combos">Combos</button>
-      <button data-tab="comparativa">Comparativa</button>
-      <button data-tab="compras">Lista de compras</button>
-      <button data-tab="inventario">Inventario</button>
-      <button data-tab="estacionamiento">Estacionamiento</button>
-      <button data-tab="catalogo" class="admin-only">Catálogo</button>
-      <button data-tab="usuarios" class="admin-only">Usuarios</button>
-      <button data-tab="glosario">Glosario</button>
+    <div
+      hidden
+      aria-label="Detalle de resultados"
+      class="tabbar noprint"
+      id="tabbar"
+    >
+      <button data-tab="resumen">Resumen</button
+      ><button data-tab="calendario">Calendario</button
+      ><button data-tab="productos">Productos</button
+      ><button data-tab="comparativa">Comparaciones</button
+      ><button data-tab="calor">Venta por hora</button
+      ><button data-tab="combos">Combos</button
+      ><button data-tab="estacionamiento">Estacionamiento</button
+      ><button data-tab="glosario">Ayuda</button>
     </div>
+    <nav
+      aria-label="Registro"
+      hidden
+      class="section-nav noprint"
+      id="registerNav"
+    >
+      <button class="btn sec sm" data-tab="registro">Días y correcciones</button
+      ><button class="btn sec sm" data-tab="inventario">
+        Existencias y movimientos</button
+      ><a class="btn sm" href="operador.html">Capturar día</a>
+    </nav>
 
     <main class="wrap">
       <div id="reportScopeNote" class="msg noprint" hidden></div>
-      <div id="reportFilters" class="card noprint" style="margin-bottom: 0">
+      <div
+        hidden
+        id="reportFilters"
+        class="card noprint"
+        style="margin-bottom: 0"
+      >
+        <p id="reportDataStatus" class="hint" aria-live="polite"></p>
         <div class="grid grid4">
           <div class="field" style="margin-bottom: 0">
             <label>Desde</label><input type="date" id="fFrom" />
@@ -116,197 +137,204 @@
           </div>
           <div></div>
         </div>
-        <div class="grid grid4" style="margin-top: 12px">
-          <div class="field" style="margin-bottom: 0">
-            <label>Tipo de día</label>
-            <select id="fTipoDia">
+
+        <details class="report-extra">
+          <summary>Filtrar por actividad, deporte o equipo</summary>
+          <div class="grid grid4" style="margin-top: 12px">
+            <div class="field" style="margin-bottom: 0">
+              <label>Tipo de día</label>
+              <select id="fTipoDia">
+                <option value="todos">Todos</option>
+                <option value="semana">Entre semana</option>
+                <option value="finde">Fin de semana</option>
+              </select>
+            </div>
+            <div class="field" style="margin-bottom: 0">
+              <label>Partido</label>
+              <select id="fTipoPartido">
+                <option value="todos">Todos</option>
+                <option value="con">Con partido</option>
+                <option value="sin">Sin partido</option>
+              </select>
+            </div>
+            <div class="field" style="margin-bottom: 0">
+              <label>Deporte</label>
+              <select id="fDeporte">
+                <option value="todos">Todos</option>
+                <option value="futbol">Fútbol</option>
+                <option value="beisbol">Béisbol / Softbol</option>
+                <option value="otro">Otro / normal</option>
+              </select>
+            </div>
+            <div class="field" style="margin-bottom: 0">
+              <label>Categoría</label>
+              <select id="fCategoria">
+                <option value="todos">Todas</option>
+                <option value="evento_especial">Evento especial</option>
+                <option value="dia_partido">Día de partido</option>
+                <option value="entrenamiento_normal">
+                  Entrenamiento normal
+                </option>
+              </select>
+            </div>
+          </div>
+          <div
+            class="field"
+            style="margin-top: 12px; margin-bottom: 0; max-width: 320px"
+          >
+            <label>Evento específico</label>
+            <select id="fEvento">
               <option value="todos">Todos</option>
-              <option value="semana">Entre semana</option>
-              <option value="finde">Fin de semana</option>
             </select>
           </div>
-          <div class="field" style="margin-bottom: 0">
-            <label>Partido</label>
-            <select id="fTipoPartido">
-              <option value="todos">Todos</option>
-              <option value="con">Con partido</option>
-              <option value="sin">Sin partido</option>
-            </select>
+          <div class="field" style="margin-top: 12px; margin-bottom: 0">
+            <label>Etiquetas del evento (una o varias)</label>
+            <div class="check-group" id="fEventTags">
+              <label class="check-option"
+                ><input type="checkbox" class="fEventTag" value="futbol" />
+                Fútbol</label
+              >
+              <label class="check-option"
+                ><input type="checkbox" class="fEventTag" value="beisbol" />
+                Béisbol / Softbol</label
+              >
+              <label class="check-option"
+                ><input type="checkbox" class="fEventTag" value="club_puebla" />
+                Club Puebla</label
+              >
+              <label class="check-option"
+                ><input type="checkbox" class="fEventTag" value="otro" />
+                Otro</label
+              >
+            </div>
+            <div class="hint">
+              Al marcar varias, muestra eventos que tengan cualquiera de ellas.
+            </div>
           </div>
-          <div class="field" style="margin-bottom: 0">
-            <label>Deporte</label>
-            <select id="fDeporte">
-              <option value="todos">Todos</option>
-              <option value="futbol">Fútbol</option>
-              <option value="beisbol">Béisbol / Softbol</option>
-              <option value="otro">Otro / normal</option>
-            </select>
-          </div>
-          <div class="field" style="margin-bottom: 0">
-            <label>Categoría</label>
-            <select id="fCategoria">
-              <option value="todos">Todas</option>
-              <option value="evento_especial">Evento especial</option>
-              <option value="dia_partido">Día de partido</option>
-              <option value="entrenamiento_normal">Entrenamiento normal</option>
-            </select>
-          </div>
-        </div>
-        <div
-          class="field"
-          style="margin-top: 12px; margin-bottom: 0; max-width: 320px"
-        >
-          <label>Evento específico</label>
-          <select id="fEvento">
-            <option value="todos">Todos</option>
-          </select>
-        </div>
-        <div class="field" style="margin-top: 12px; margin-bottom: 0">
-          <label>Etiquetas del evento (una o varias)</label>
-          <div class="check-group" id="fEventTags">
-            <label class="check-option"
-              ><input type="checkbox" class="fEventTag" value="futbol" />
-              Fútbol</label
+          <div
+            style="
+              margin-top: 12px;
+              display: flex;
+              gap: 8px;
+              flex-wrap: wrap;
+              align-items: center;
+            "
+          >
+            <span class="footnote" style="margin-right: 2px">Atajos:</span>
+            <button
+              type="button"
+              class="btn sec sm"
+              data-preset="todos,todos,todos,todos"
             >
-            <label class="check-option"
-              ><input type="checkbox" class="fEventTag" value="beisbol" />
-              Béisbol / Softbol</label
+              Todos
+            </button>
+            <button
+              type="button"
+              class="btn sec sm"
+              data-preset="semana,todos,todos,todos"
             >
-            <label class="check-option"
-              ><input type="checkbox" class="fEventTag" value="club_puebla" />
-              Club Puebla</label
+              Entre semana
+            </button>
+            <button
+              type="button"
+              class="btn sec sm"
+              data-preset="finde,todos,todos,todos"
             >
-            <label class="check-option"
-              ><input type="checkbox" class="fEventTag" value="otro" />
-              Otro</label
+              Fin de semana
+            </button>
+            <button
+              type="button"
+              class="btn sec sm"
+              data-preset="todos,con,todos,todos"
             >
+              Con partido
+            </button>
+            <button
+              type="button"
+              class="btn sec sm"
+              data-preset="semana,con,todos,todos"
+            >
+              Entre semana con partido
+            </button>
+            <button
+              type="button"
+              class="btn sec sm"
+              data-preset="finde,con,todos,todos"
+            >
+              Fin de semana con partido
+            </button>
+            <button
+              type="button"
+              class="btn sec sm"
+              data-preset="todos,todos,futbol,todos"
+            >
+              Fútbol
+            </button>
+            <button
+              type="button"
+              class="btn sec sm"
+              data-preset="todos,todos,beisbol,todos"
+            >
+              Béisbol
+            </button>
+            <button
+              type="button"
+              class="btn sec sm"
+              data-preset="todos,todos,todos,evento_especial"
+            >
+              Evento especial
+            </button>
+            <button
+              type="button"
+              class="btn sec sm"
+              data-preset="todos,todos,todos,dia_partido"
+            >
+              Día de partido
+            </button>
+            <button
+              type="button"
+              class="btn sec sm"
+              data-preset="todos,todos,todos,entrenamiento_normal"
+            >
+              Entrenamiento normal
+            </button>
           </div>
-          <div class="hint">
-            Al marcar varias, muestra eventos que tengan cualquiera de ellas.
-          </div>
-        </div>
-        <div
-          style="
-            margin-top: 12px;
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            align-items: center;
-          "
-        >
-          <span class="footnote" style="margin-right: 2px">Atajos:</span>
-          <button
-            type="button"
-            class="btn sec sm"
-            data-preset="todos,todos,todos,todos"
-          >
-            Todos
-          </button>
-          <button
-            type="button"
-            class="btn sec sm"
-            data-preset="semana,todos,todos,todos"
-          >
-            Entre semana
-          </button>
-          <button
-            type="button"
-            class="btn sec sm"
-            data-preset="finde,todos,todos,todos"
-          >
-            Fin de semana
-          </button>
-          <button
-            type="button"
-            class="btn sec sm"
-            data-preset="todos,con,todos,todos"
-          >
-            Con partido
-          </button>
-          <button
-            type="button"
-            class="btn sec sm"
-            data-preset="semana,con,todos,todos"
-          >
-            Entre semana con partido
-          </button>
-          <button
-            type="button"
-            class="btn sec sm"
-            data-preset="finde,con,todos,todos"
-          >
-            Fin de semana con partido
-          </button>
-          <button
-            type="button"
-            class="btn sec sm"
-            data-preset="todos,todos,futbol,todos"
-          >
-            Fútbol
-          </button>
-          <button
-            type="button"
-            class="btn sec sm"
-            data-preset="todos,todos,beisbol,todos"
-          >
-            Béisbol
-          </button>
-          <button
-            type="button"
-            class="btn sec sm"
-            data-preset="todos,todos,todos,evento_especial"
-          >
-            Evento especial
-          </button>
-          <button
-            type="button"
-            class="btn sec sm"
-            data-preset="todos,todos,todos,dia_partido"
-          >
-            Día de partido
-          </button>
-          <button
-            type="button"
-            class="btn sec sm"
-            data-preset="todos,todos,todos,entrenamiento_normal"
-          >
-            Entrenamiento normal
-          </button>
-        </div>
+        </details>
       </div>
 
       <div id="globalMsg"></div>
 
-      <div class="pane on" id="pane-resumen">
-        <h2 class="section-title" style="margin-top: 20px">Vista ejecutiva</h2>
-        <p class="footnote" style="margin-top: 6px">
-          Resultados del periodo para juntas, decisiones de precio, rentabilidad
-          y desempeño general.
-        </p>
-        <div class="kpis" id="kpis" style="margin-top: 14px"></div>
-        <div id="sinCostoNote"></div>
-        <div class="card" style="margin-top: 16px">
-          <h3
-            style="
-              font-size: 16px;
-              font-family: &quot;Source Sans 3&quot;;
-              font-weight: 700;
-              margin-bottom: 12px;
-            "
+      <section class="pane on" id="pane-inicio">
+        <h2>Tu tienda</h2>
+        <p id="homePeriod" class="footnote"></p>
+        <div class="kpis" id="homeKpis"></div>
+        <div class="home-actions">
+          <a href="operador.html" class="btn">Capturar día</a
+          ><button
+            class="btn sec"
+            data-action="tab"
+            data-tab-target="planificador"
           >
-            Venta por hora (acumulado del periodo)
-          </h3>
-          <div
-            id="barchart"
-            style="
-              display: flex;
-              align-items: flex-end;
-              gap: 8px;
-              height: 180px;
-              border-bottom: 1px solid var(--line);
-            "
-          ></div>
+            Preparar compra
+          </button>
         </div>
+        <div class="grid grid2">
+          <section class="card">
+            <h3>Qué necesita atención</h3>
+            <div id="homePending"></div>
+          </section>
+          <section class="card">
+            <h3>Próxima compra</h3>
+            <div id="homeNext"></div>
+          </section>
+        </div>
+      </section>
+      <section class="pane" id="pane-registro">
+        <h2>Registrar</h2>
+        <p class="footnote">
+          Captura una jornada, actualiza las existencias o corrige un día con su
+          motivo e historial.
+        </p>
         <div class="card" style="margin-top: 16px">
           <h3
             style="
@@ -353,136 +381,36 @@
             <div id="correctionHistory"></div>
           </details>
         </div>
-      </div>
-
-      <div class="pane" id="pane-operacion">
-        <h2 class="section-title" style="margin-top: 20px">Vista operativa</h2>
+      </section>
+      <div class="pane" id="pane-resumen">
+        <h2 class="section-title" style="margin-top: 20px">Resultados</h2>
         <p class="footnote" style="margin-top: 6px">
-          Lo necesario para operar la tienda hoy: volumen, productos, días
-          recientes, pendientes y compra inmediata.
+          Resultados del periodo para juntas, decisiones de precio, rentabilidad
+          y desempeño general.
         </p>
-        <div class="kpis" id="opsKpis" style="margin-top: 14px"></div>
-        <div class="grid grid2" style="margin-top: 16px; align-items: start">
-          <div class="card">
-            <h3
-              style="
-                font-size: 16px;
-                font-family: &quot;Source Sans 3&quot;;
-                font-weight: 700;
-                margin-bottom: 12px;
-              "
-            >
-              Actividad reciente
-            </h3>
-            <div class="scroll">
-              <table id="tblOpsDays">
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Tipo</th>
-                    <th class="num">Tickets</th>
-                    <th class="num">Unidades</th>
-                    <th class="num">Venta</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </div>
-          <div class="card">
-            <h3
-              style="
-                font-size: 16px;
-                font-family: &quot;Source Sans 3&quot;;
-                font-weight: 700;
-                margin-bottom: 12px;
-              "
-            >
-              Pendientes y acciones
-            </h3>
-            <div id="opsActions"></div>
-          </div>
-        </div>
+        <div class="kpis" id="kpis" style="margin-top: 14px"></div>
+        <div id="sinCostoNote"></div>
         <div class="card" style="margin-top: 16px">
-          <div
+          <h3
             style="
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              gap: 12px;
+              font-size: 16px;
+              font-family: &quot;Source Sans 3&quot;;
+              font-weight: 700;
               margin-bottom: 12px;
-              flex-wrap: wrap;
             "
           >
-            <h3
-              style="
-                font-size: 16px;
-                font-family: &quot;Source Sans 3&quot;;
-                font-weight: 700;
-              "
-            >
-              Compra sugerida para 7 días
-            </h3>
-            <button
-              type="button"
-              class="btn sec sm"
-              data-action="tab"
-              data-tab-target="compras"
-            >
-              Abrir lista completa
-            </button>
-          </div>
-          <div class="scroll">
-            <table id="tblOpsCompras">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th class="num">Existencia</th>
-                  <th class="num">Consumo/día</th>
-                  <th class="num">Comprar</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div class="pane" id="pane-guiada">
-        <h2 class="section-title" style="margin-top: 20px">Vista guiada</h2>
-        <p class="footnote" style="margin-top: 6px">
-          Conclusiones, alertas y recomendaciones traducidas a acciones
-          concretas.
-        </p>
-        <div class="guided-hero" id="guidedHero"></div>
-        <div class="grid grid3" id="guidedKpis" style="margin-top: 14px"></div>
-        <div class="grid grid2" style="margin-top: 16px; align-items: start">
-          <div class="card">
-            <h3
-              style="
-                font-size: 16px;
-                font-family: &quot;Source Sans 3&quot;;
-                font-weight: 700;
-                margin-bottom: 10px;
-              "
-            >
-              Qué necesita atención
-            </h3>
-            <div id="guidedActions"></div>
-          </div>
-          <div class="card">
-            <h3
-              style="
-                font-size: 16px;
-                font-family: &quot;Source Sans 3&quot;;
-                font-weight: 700;
-                margin-bottom: 10px;
-              "
-            >
-              Comparación rápida por deporte
-            </h3>
-            <div id="guidedSportCompare"></div>
-          </div>
+            Venta por hora (acumulado del periodo)
+          </h3>
+          <div
+            id="barchart"
+            style="
+              display: flex;
+              align-items: flex-end;
+              gap: 8px;
+              height: 180px;
+              border-bottom: 1px solid var(--line);
+            "
+          ></div>
         </div>
       </div>
 
@@ -491,31 +419,26 @@
         class="pane"
         id="pane-planificador"
       >
-        <div class="planner-heading">
-          <div class="eyebrow">Preparar el próximo evento</div>
-          <h2 id="plannerTitle">Planificar compra</h2>
+        <header class="planner-header">
+          <div class="eyebrow">Compras</div>
+          <h2 id="plannerTitle">Preparar compra</h2>
           <p>
-            Responde paso a paso con lo que ya sabes. Puedes volver y ajustar
-            tus respuestas antes de calcular.
+            Describe la jornada. Revisaremos el historial y las existencias para
+            preparar una sola lista.
           </p>
-        </div>
-        <div class="card planner-card" id="plannerQuestions">
-          <p id="plannerStepText" class="eyebrow" aria-live="polite">
-            Paso 1 de 5
-          </p>
-          <ol class="planner-progress" aria-label="Pasos de la propuesta">
+        </header>
+        <div id="plannerQuestions" class="card planner-questions">
+          <p id="plannerStepText" class="eyebrow" aria-live="polite"></p>
+          <ol class="planner-progress" aria-label="Pasos de la compra">
             <li data-planner-progress="">Fecha</li>
-            <li data-planner-progress="">Evento</li>
-            <li data-planner-progress="">Partidos</li>
-            <li data-planner-progress="">Equipo</li>
-            <li data-planner-progress="">Revisar</li>
+            <li data-planner-progress="">Actividades</li>
+            <li data-planner-progress="">Compra</li>
           </ol>
           <form id="plannerForm" novalidate>
             <section data-planner-step="">
-              <h3 tabindex="-1">¿Para qué día necesitas preparar la compra?</h3>
-              <p>La fecha es necesaria para comparar eventos semejantes.</p>
+              <h3 tabindex="-1">¿Para qué día vas a comprar?</h3>
               <div class="field">
-                <label for="predDate">Fecha del evento</label
+                <label for="predDate">Fecha de la jornada</label
                 ><input
                   type="date"
                   id="predDate"
@@ -526,115 +449,27 @@
               <p id="plannerDateHint" class="hint" aria-live="polite"></p>
             </section>
             <section data-planner-step="" hidden>
-              <h3 tabindex="-1">¿Qué tipo de evento habrá?</h3>
-              <div class="field">
-                <label for="predComposition">¿Cómo quieres calcular?</label
-                ><select id="predComposition">
-                  <option value="groups" selected>
-                    Por partido, deporte y equipo
-                  </option>
-                  <option value="single">
-                    Comparar días completos de un mismo tipo
-                  </option>
-                </select>
-              </div>
-              <div id="predGroupTypes" hidden></div>
-              <div id="predSingleType">
-                <p>
-                  Si todavía no está definido, puedes dejarlo sin especificar.
-                </p>
-                <div class="field">
-                  <label for="predType">Tipo de evento</label
-                  ><select id="predType">
-                    <option value="sin_especificar">No lo sé todavía</option>
-                    <option value="futbol">Fútbol</option>
-                    <option value="beisbol">Béisbol / Softbol</option>
-                    <option value="entrenamiento">Entrenamiento</option>
-                    <option value="otro">Otro evento</option>
-                  </select>
-                </div>
-                <p class="hint">
-                  Cuando falta este dato, la referencia será más general y
-                  tendrá menor confianza.
-                </p>
-              </div>
+              <h3 tabindex="-1">¿Qué habrá ese día?</h3>
+              <div id="predActivities"></div>
             </section>
             <section data-planner-step="" hidden>
-              <h3 tabindex="-1">¿Cuántos partidos se jugarán ese día?</h3>
-              <div id="predGroupGames" hidden></div>
-              <div id="predSingleGames">
-                <div class="field">
-                  <label for="predGamesMode">Lo que sabemos</label
-                  ><select id="predGamesMode">
-                    <option value="unknown">No lo sé todavía</option>
-                    <option value="known">Sí sé cuántos partidos habrá</option>
-                    <option value="none">No aplica: no habrá partidos</option>
-                  </select>
-                </div>
-                <div class="field" id="predGamesField" hidden>
-                  <label for="predGames">Número de partidos</label
-                  ><input
-                    type="number"
-                    id="predGames"
-                    min="1"
-                    max="50"
-                    step="1"
-                    inputmode="numeric"
-                    disabled
-                  />
-                </div>
-                <p class="hint">
-                  «No lo sé» deja la cantidad desconocida. «No aplica» indica
-                  que habrá cero partidos.
-                </p>
-              </div>
-            </section>
-            <section data-planner-step="" hidden>
-              <h3 tabindex="-1">¿Hay un equipo que debamos considerar?</h3>
-              <div id="predGroupTeams" hidden></div>
-              <div id="predSingleTeam">
-                <div class="field">
-                  <label for="predTeamMode">Equipo</label
-                  ><select id="predTeamMode">
-                    <option value="none">
-                      No aplica: sin equipo específico
-                    </option>
-                    <option value="unknown">No lo sé todavía</option>
-                    <option value="club_puebla">Club Puebla</option>
-                    <option value="named">Otro equipo</option>
-                  </select>
-                </div>
-                <div class="field" id="predTeamField" hidden>
-                  <label for="predTeam">Nombre del equipo</label
-                  ><input
-                    id="predTeam"
-                    maxlength="120"
-                    placeholder="Ej. Tigres"
-                    disabled
-                  />
-                </div>
-                <p class="hint">
-                  El equipo se busca en nombres y etiquetas de eventos
-                  anteriores. Si no hay referencias, te lo diremos.
-                </p>
-              </div>
-            </section>
-            <section data-planner-step="" hidden>
-              <h3 tabindex="-1">Revisemos antes de calcular</h3>
+              <h3 tabindex="-1">Revisa tu jornada</h3>
               <div id="plannerReview"></div>
-              <div class="field">
-                <label for="predSafety"
-                  >¿Quieres un colchón sobre la venta estimada?</label
-                ><select id="predSafety">
-                  <option value="0">Sin colchón</option>
-                  <option value="0.10" selected>10%</option>
-                  <option value="0.15">15%</option>
-                  <option value="0.20">20%</option>
-                </select>
-              </div>
+              <details>
+                <summary>Ajustar reserva adicional</summary>
+                <div class="field">
+                  <label for="predSafety">Reserva sobre la venta estimada</label
+                  ><select id="predSafety">
+                    <option value="0">Sin reserva</option>
+                    <option value="0.1" selected>10%</option>
+                    <option value="0.15">15%</option>
+                    <option value="0.2">20%</option>
+                  </select>
+                </div>
+              </details>
               <p class="hint">
-                La compra descontará las existencias y respetará los límites de
-                almacenamiento y conservación configurados.
+                Descontaremos las existencias una sola vez y revisaremos espacio
+                y conservación.
               </p>
             </section>
             <p id="plannerError" role="alert" class="planner-error"></p>
@@ -642,86 +477,109 @@
               <button type="button" class="btn sec" id="plannerBack" hidden>
                 Anterior</button
               ><button type="button" class="btn" id="plannerNext">
-                Continuar</button
+                Elegir actividades</button
               ><button type="button" class="btn" id="btnPredict" hidden>
-                Calcular propuesta
+                Calcular compra
               </button>
             </div>
           </form>
         </div>
         <button type="button" class="btn sec" id="plannerEdit" hidden>
-          Editar mis respuestas
+          Editar jornada
         </button>
         <div id="plannerResults" class="card planner-results" hidden>
-          <h3 id="plannerResultTitle" tabindex="-1">Tu propuesta de compra</h3>
-          <p class="footnote">
-            Revisa las cantidades y las referencias antes de guardar.
-          </p>
+          <h3 id="plannerResultTitle" tabindex="-1">Tu lista de compra</h3>
           <div id="predictorSummary"></div>
-          <div class="scroll" style="margin-top: 12px">
+          <div class="scroll">
             <table id="tblPrediction">
               <thead>
                 <tr>
                   <th>Producto</th>
-                  <th class="num">Venta esperada</th>
-                  <th class="num">Objetivo con colchón</th>
-                  <th class="num">Existencia actual estimada</th>
-                  <th class="num">Compra sugerida</th>
-                  <th class="num">Compra revisada</th>
-                  <th>Base del cálculo</th>
+                  <th class="num">Venta estimada</th>
+                  <th class="num">Existencias</th>
+                  <th class="num">Comprar</th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
-          <p class="footnote">
-            Existencia estimada = último conteo + entradas − ventas − mermas,
-            incluyendo devoluciones y ajustes registrados. Confirma el conteo si
-            faltan movimientos. La existencia es la disponible ahora: si habrá
-            ventas antes del evento, actualiza el conteo y vuelve a calcular. El
-            cálculo usa los datos que indicaste y separa entre semana de fin de
-            semana. Las respuestas desconocidas amplían la comparación y reducen
-            la confianza. En el cálculo por partido, cada categoría usa sus
-            propias referencias y después se suman las unidades; no se repite la
-            venta total de un día por cada juego. Para comida, administración
-            asigna un cupo por producto y un máximo que se pueda vender antes de
-            caducar. La suma de esos cupos debe caber en el espacio compartido.
-          </p>
+          <div id="planManualControls" class="noprint">
+            <label class="check-option"
+              ><input type="checkbox" id="planManual" />Completar o ajustar
+              cantidades manualmente</label
+            >
+            <div id="planManualFields" hidden>
+              <p class="hint">
+                Estas cantidades quedarán identificadas como decisión del
+                encargado. Si faltan datos, se guardará un borrador.
+              </p>
+              <div class="grid grid2">
+                <div class="field">
+                  <label for="planAddProduct">Agregar producto a la lista</label
+                  ><select id="planAddProduct"></select>
+                </div>
+                <button class="btn sec" type="button" id="btnAddPlanProduct">
+                  Agregar producto
+                </button>
+              </div>
+              <div class="field">
+                <label for="planManualReason"
+                  >Motivo de las cantidades manuales</label
+                ><textarea
+                  id="planManualReason"
+                  rows="2"
+                  maxlength="1000"
+                  placeholder="Ej. Pedido adicional confirmado por el encargado"
+                ></textarea>
+              </div>
+            </div>
+          </div>
+          <details class="prediction-detail">
+            <summary>Ver cómo se calculó</summary>
+            <div id="predictionDetails"></div>
+            <p class="footnote">
+              Las ventas registradas pueden ser menores que la demanda si se
+              agotó un producto. Actualiza el conteo antes de comprar si habrá
+              ventas previas a la jornada. Para comida, los cupos por producto
+              deben caber juntos en el espacio disponible.
+            </p>
+          </details>
           <label class="check-option"
-            ><input type="checkbox" id="planReviewed" />Revisé las existencias,
-            los límites y los productos pendientes de conteo.</label
-          >
-          <button type="button" id="btnSavePlan" class="btn" disabled>
-            Guardar propuesta revisada
+            ><input type="checkbox" id="planReviewed" />Revisé las cantidades y
+            los pendientes de esta lista.</label
+          ><button type="button" class="btn" id="btnSavePlan" disabled>
+            Guardar lista
           </button>
           <p class="footnote">
-            Guardar conserva esta estimación para medirla después; no crea una
-            compra ni aumenta el inventario.
+            Guardar conserva la propuesta. Registra los productos recibidos en
+            Existencias cuando llegue la compra.
           </p>
-          <details>
-            <summary>¿Cómo resultaron las propuestas anteriores?</summary>
-            <p class="footnote">
-              Se compara la última propuesta de cada fecha con las ventas de
-              días cerrados. El error es la diferencia absoluta por producto
-              dividida entre las unidades vendidas; menor es mejor. Los ajustes
-              requieren al menos tres resultados comparables y se limitan a
-              ±25%.
-            </p>
-            <div class="scroll">
-              <table id="tblPlanResults">
-                <thead>
-                  <tr>
-                    <th>Evento</th>
-                    <th>Estado</th>
-                    <th>Unidades vendidas</th>
-                    <th>Error de estimación</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </details>
         </div>
+        <details class="card purchase-history">
+          <summary>Compras guardadas</summary>
+          <div id="savedPlans"></div>
+        </details>
+        <details class="card purchase-history">
+          <summary>¿Cómo resultaron las compras anteriores?</summary>
+          <p class="footnote">
+            Se comparan estimaciones completas con jornadas cerradas de la misma
+            composición. Los borradores y las decisiones manuales no entrenan el
+            predictor.
+          </p>
+          <div class="scroll">
+            <table id="tblPlanResults">
+              <thead>
+                <tr>
+                  <th>Jornada</th>
+                  <th>Estado</th>
+                  <th>Unidades vendidas</th>
+                  <th>Error de estimación</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </details>
       </section>
       <div class="pane" id="pane-calendario">
         <h2 class="section-title" style="margin-top: 20px">
@@ -1267,40 +1125,6 @@
                 <tbody></tbody>
               </table>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="pane" id="pane-compras">
-        <h2 class="section-title" style="margin-top: 20px">
-          Lista de compras sugerida
-        </h2>
-        <p class="footnote" style="margin-top: 6px">
-          Se calcula con el consumo promedio diario del periodo filtrado y la
-          última existencia capturada de cada producto (conteo físico si existe,
-          si no el teórico). Ajusta los días de cobertura según qué tan seguido
-          compras.
-        </p>
-        <div class="card noprint" style="margin-top: 14px">
-          <div class="field" style="margin-bottom: 0; max-width: 220px">
-            <label>Días de cobertura deseados</label
-            ><input type="number" id="coberturaDias" value="7" min="1" />
-          </div>
-        </div>
-        <div class="card" style="margin-top: 14px">
-          <div class="scroll">
-            <table id="tblCompras">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th class="num">Venta/día prom.</th>
-                  <th class="num">Existencia actual</th>
-                  <th class="num">Cobertura actual</th>
-                  <th class="num">Sugerido comprar</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
           </div>
         </div>
       </div>

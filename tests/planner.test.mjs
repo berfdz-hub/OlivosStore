@@ -3,213 +3,138 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { parseHTML } from "linkedom";
 import { initPlanner, readPlannerAnswers } from "../lib/planner.js";
+import { initGroupEditor } from "../lib/event-groups.js";
 import { businessDate } from "../lib/csv.js";
-
 function wizard(calculate = () => true) {
   const { document, window } = parseHTML(
     fs.readFileSync(new URL("../reportes.html", import.meta.url), "utf8"),
   );
-  let calculations = 0,
-    invalidations = 0;
+  const el = (id) => document.getElementById(id);
   const ui = initPlanner({
     root: document,
-    onCalculate: () => {
-      calculations++;
-      return calculate(readPlannerAnswers(document));
-    },
-    onInvalidate: () => invalidations++,
+    onCalculate: () => calculate(readPlannerAnswers(document)),
+    onInvalidate: () => {},
   });
-  const el = (id) => document.getElementById(id);
-  for (const option of el("predComposition").options)
-    option.removeAttribute("selected");
-  [...el("predComposition").options]
-    .find((o) => o.value === "single")
-    .setAttribute("selected", "");
-  el("predComposition").dispatchEvent(
-    new window.Event("change", { bubbles: true }),
-  );
   return {
     document,
-    ui,
+    window,
     el,
-    calculations: () => calculations,
-    invalidations: () => invalidations,
+    ui,
     click: (id) => el(id).click(),
+    add: (key) =>
+      document.querySelector(`[data-add-activity="${key}"]`).click(),
     value(id, value) {
       const node = el(id);
       if (node.tagName === "SELECT") {
-        for (const option of node.options) option.removeAttribute("selected");
+        for (const o of node.options) o.removeAttribute("selected");
         [...node.options]
-          .find((option) => option.value === value)
+          .find((o) => o.value === value)
           .setAttribute("selected", "");
       } else node.value = value;
       node.dispatchEvent(new window.Event("change", { bubbles: true }));
     },
     step: () =>
       [...document.querySelectorAll("[data-planner-step]")].findIndex(
-        (node) => !node.hidden,
+        (n) => !n.hidden,
       ),
   };
 }
-
-test("guided planner is independent and accepts unknown answers without inventing zero games", () => {
-  let answers;
-  const w = wizard((a) => {
-    answers = a;
-    return true;
-  });
-  assert.equal(w.el("pane-guiada").querySelector("#predDate"), null);
-  assert(w.el("pane-planificador").contains(w.el("predDate")));
-  assert.equal(w.step(), 0);
-  assert.equal(w.ui.hasResults(), false);
-  w.value("predDate", businessDate());
-  for (let i = 0; i < 4; i++) w.click("plannerNext");
-  assert.equal(w.step(), 4);
-  assert.match(
-    w.el("plannerReview").textContent,
-    /No lo sé; no se filtrará por cantidad/,
-  );
-  w.click("btnPredict");
-  assert.equal(answers.games, null);
-  assert.equal(answers.type, "sin_especificar");
-  assert.equal(answers.team, "");
-  assert.equal(w.calculations(), 1);
-  assert.equal(w.ui.hasResults(), true);
-  assert.equal(w.el("plannerResults").hidden, false);
-  assert.equal(w.el("plannerQuestions").hidden, true);
-  w.click("plannerEdit");
-  assert.equal(w.step(), 4);
-  assert.equal(w.ui.hasResults(), false);
-  assert.equal(w.el("plannerResults").hidden, true);
-});
-
-test("wizard validates supplied answers and preserves them while moving back and forward", () => {
+test("three-step activity flow keeps the whole agenda together with no end-time input", () => {
   const w = wizard();
-  w.value("predDate", "");
-  w.click("plannerNext");
-  assert.equal(w.step(), 0);
-  assert.match(w.el("plannerError").textContent, /fecha futura/);
   w.value("predDate", businessDate());
   w.click("plannerNext");
-  w.value("predType", "futbol");
-  w.click("plannerNext");
-  w.value("predGamesMode", "known");
-  assert.equal(w.el("predGames").disabled, false);
-  for (const invalid of ["", "0", "1.5", "51"]) {
-    w.value("predGames", invalid);
-    w.click("plannerNext");
-    assert.equal(w.step(), 2);
-    assert.match(w.el("plannerError").textContent, /1 y 50/);
-  }
-  w.value("predGames", "3");
-  w.click("plannerNext");
-  w.value("predTeamMode", "named");
-  w.value("predTeam", "!!!");
-  w.click("plannerNext");
-  assert.equal(w.step(), 3);
-  assert.match(w.el("plannerError").textContent, /Escribe el equipo/);
-  w.value("predTeam", "Tigres");
-  w.click("plannerNext");
-  w.click("plannerBack");
-  w.click("plannerBack");
-  assert.equal(w.el("predGames").value, "3");
-  w.click("plannerNext");
-  assert.equal(w.el("predTeam").value, "Tigres");
-  w.click("plannerNext");
-  w.click("btnPredict");
-  assert.equal(w.ui.hasResults(), true);
-});
-
-test("no aplica and unknown remain distinct; review escapes a supplied team name", () => {
-  const w = wizard();
-  w.value("predGamesMode", "none");
-  assert.equal(readPlannerAnswers(w.document).games, 0);
-  w.value("predGamesMode", "unknown");
-  assert.equal(readPlannerAnswers(w.document).games, null);
-  w.value("predTeamMode", "named");
-  const attack = '<img src=x onerror="alert(1)">Tigres';
-  w.value("predTeam", attack);
-  assert(w.el("plannerReview").textContent.includes(attack));
-  assert.equal(w.el("plannerReview").querySelector("img"), null);
-  w.value("predTeamMode", "none");
-  assert.equal(readPlannerAnswers(w.document).team, "");
-  assert.equal(w.el("predTeam").disabled, true);
-  w.value("predTeamMode", "club_puebla");
-  assert.equal(readPlannerAnswers(w.document).team, "Club Puebla");
-});
-
-test("calculation failure stays visible in the wizard and permits retry", () => {
-  let fail = true;
-  const w = wizard(() => {
-    if (fail) throw new Error("No se pudo leer el historial");
-    return true;
-  });
-  for (let i = 0; i < 4; i++) w.click("plannerNext");
-  w.click("btnPredict");
-  assert.equal(w.ui.hasResults(), false);
-  assert.equal(w.el("plannerQuestions").hidden, false);
-  assert.match(w.el("plannerError").textContent, /leer el historial/);
-  fail = false;
-  w.click("btnPredict");
-  assert.equal(w.ui.hasResults(), true);
-  w.value("predSafety", "0.20");
-  assert.equal(w.ui.hasResults(), false);
-  assert.equal(w.el("plannerResults").hidden, true);
-});
-
-test("mixed wizard keeps categories, independent counts, hours and teams while editing", () => {
-  const w = wizard();
-  w.value("predComposition", "groups");
-  w.value("predGroups-0-type", "futbol");
-  w.value("predGroups-1-type", "futbol");
-  w.click("predGroups-add");
-  w.value("predGroups-2-type", "beisbol");
-  w.click("plannerNext");
-  w.click("plannerNext");
-  for (const [i, count] of [1, 2, 3].entries()) {
-    w.value("predGroups-" + i + "-gamesMode", "known");
-    w.value("predGroups-" + i + "-games", String(count));
-  }
-  w.value("predGroups-0-start0", "09:00");
-  w.value("predGroups-0-end0", "11:00");
-  w.click("plannerNext");
-  assert.equal(w.step(), 3);
-  w.value("predGroups-0-teamMode", "club_puebla");
-  w.value("predGroups-1-teamMode", "academy");
-  w.value("predGroups-2-teamMode", "none");
-  w.click("plannerNext");
-  assert.equal(w.step(), 4);
-  const a = readPlannerAnswers(w.document);
-  assert.equal(a.games, 6);
-  assert.equal(a.groups[0].team, "Club Puebla");
-  assert.equal(a.groups[1].teamMode, "academy");
-  assert.equal(a.groups[2].type, "beisbol");
-  assert.deepEqual(a.groups[0].slots, [{ start: "09:00", end: "11:00" }]);
-  w.click("plannerBack");
-  w.click("plannerBack");
-  assert.equal(w.el("predGroups-0-start0").value, "09:00");
-  w.click("plannerNext");
-  w.click("plannerNext");
-  w.click("btnPredict");
-  assert.equal(w.ui.hasResults(), true);
-  w.click("plannerEdit");
-  w.click("plannerBack");
-  w.click("plannerBack");
-  w.value("predGroups-0-end0", "08:00");
+  w.add("puebla");
+  w.add("academy");
+  w.add("baseball");
+  w.value("predActivities-1-games", "2");
+  w.value("predActivities-2-games", "3");
+  w.value("predActivities-0-start0", "09:00");
+  assert.equal(w.document.querySelector("[data-end]"), null);
+  assert.equal(w.document.querySelector("#predComposition"), null);
+  assert.equal(w.document.querySelectorAll("[data-planner-step]").length, 3);
   w.click("plannerNext");
   assert.equal(w.step(), 2);
-  assert.match(w.el("plannerError").textContent, /posterior/);
+  const a = readPlannerAnswers(w.document);
+  assert.equal(a.games, 6);
+  assert.equal(a.groups[1].teamMode, "academy");
+  assert.equal(a.groups[2].type, "beisbol");
+  assert.equal(a.groups[0].slots[0].start, "09:00");
+  assert(!w.el("plannerReview").textContent.includes("Grupo"));
+  w.click("btnPredict");
+  assert(w.ui.hasResults());
+  w.click("plannerEdit");
+  assert.equal(w.step(), 1);
+  assert.equal(w.el("predActivities-0-start0").value, "09:00");
 });
-
-test("mixed wizard adds/removes groups, avoids unsafe names, and leaves unknown counts null", () => {
+test("missing quantity stays unknown, zero is an activity, and empty agenda cannot calculate", () => {
   const w = wizard();
-  w.value("predComposition", "groups");
-  w.value("predGroups-0-teamMode", "named");
-  w.value("predGroups-0-team", "<img src=x onerror=alert(1)>");
+  w.click("plannerNext");
+  w.click("plannerNext");
+  assert.equal(w.step(), 1);
+  assert.match(w.el("plannerError").textContent, /actividad/);
+  w.add("other");
+  assert.equal(readPlannerAnswers(w.document).groups[0].games, null);
+  w.add("training");
+  assert.equal(readPlannerAnswers(w.document).groups[1].games, 0);
+  w.value("predActivities-0-games", "51");
+  w.click("plannerNext");
+  assert.equal(w.step(), 1);
+  assert.match(w.el("plannerError").textContent, /50/);
+  w.value("predActivities-0-games", "");
+  w.click("plannerNext");
+  w.click("btnPredict");
+  assert(w.ui.hasResults());
+});
+test("activity edits and deletions retain other starts and escape team names", () => {
+  const w = wizard();
+  w.add("puebla");
+  w.add("other");
+  w.value("predActivities-0-start0", "09:00");
+  w.value("predActivities-1-teamMode", "named");
+  w.value("predActivities-1-team", "<img src=x onerror=alert(1)>");
   assert.equal(w.el("plannerReview").querySelector("img"), null);
-  w.document.querySelector('[data-remove-group="1"]').click();
-  assert.equal(readPlannerAnswers(w.document).groups.length, 1);
-  assert.equal(readPlannerAnswers(w.document).games, null);
-  w.click("predGroups-add");
-  assert.match(w.el("predGroups-0-team").value, /img/);
+  w.add("baseball");
+  assert.equal(w.el("predActivities-0-start0").value, "09:00");
+  w.document.querySelector('[data-remove-activity="2"]').click();
+  assert.equal(readPlannerAnswers(w.document).groups.length, 2);
+  assert.equal(w.el("predActivities-0-start0").value, "09:00");
+});
+test("failed calculation keeps the agenda editable and changing answers invalidates results", () => {
+  let fail = true;
+  const w = wizard(() => {
+    if (fail) throw Error("Historial no disponible");
+    return true;
+  });
+  w.add("puebla");
+  w.click("plannerNext");
+  w.click("plannerNext");
+  w.click("btnPredict");
+  assert(!w.ui.hasResults());
+  assert.match(w.el("plannerError").textContent, /Historial/);
+  fail = false;
+  w.click("btnPredict");
+  assert(w.ui.hasResults());
+  w.value("predSafety", "0.2");
+  assert(!w.ui.hasResults());
+  assert(w.el("plannerResults").hidden);
+});
+test("audited activity editor preserves recorded historical ends, but clears one if its start changes", () => {
+  const { document, window } = parseHTML('<div id="activities"></div>');
+  const groups = [
+    {
+      type: "futbol",
+      teamMode: "club_puebla",
+      team: "Club Puebla",
+      games: 1,
+      slots: [{ start: "09:00", end: "11:00" }],
+    },
+  ];
+  const editor = initGroupEditor({ root: document, id: "activities", groups });
+  assert.equal(document.querySelector("[data-end]"), null);
+  assert.equal(editor.read()[0].slots[0].end, "11:00");
+  const start = document.getElementById("activities-0-start0");
+  start.value = "12:00";
+  start.dispatchEvent(new window.Event("change", { bubbles: true }));
+  assert.equal(editor.read()[0].slots[0].end, "");
+  assert.equal(groups[0].slots[0].end, "11:00");
 });

@@ -178,3 +178,95 @@ test("unknown counts and invalid hours remain explicit; partial plans cannot cal
   assert.equal(evaluated[0].complete, false);
   assert.equal(evaluated[0].wape, null);
 });
+
+test("same mixed agenda without end times uses the entire day once, including overlapping starts", () => {
+  const h = fixture();
+  h.days = [
+    {
+      ...h.days[0],
+      event_groups: wanted.map((g) => ({
+        ...g,
+        slots: Array.from({ length: g.games }, () => ({
+          start: "12:00",
+          end: "",
+        })),
+      })),
+    },
+  ];
+  const target = h.days[0].event_groups;
+  const result = run(h, target);
+  assert.equal(result.jointMode, true);
+  assert.equal(result.partial, false);
+  assert.equal(result.rows[0].expected, 90);
+  assert.equal(result.rows[0].demand, 99);
+  assert.equal(result.components.length, 1);
+  assert.equal(result.days.length, 1);
+  assert.equal(
+    run(h, [...target.slice(0, 2), { ...target[2], games: 4, slots: [] }])
+      .partial,
+    true,
+  );
+});
+
+test("a day with several windows does not count as several independent days", () => {
+  const h = fixture();
+  h.days = h.days.filter((d) => d.id === "club");
+  h.days.push({
+    ...h.days[0],
+    id: "other",
+    date: "2026-10-10",
+    event_groups: [group("futbol", "club_puebla", 2)],
+  });
+  h.tickets.push({
+    id: "other",
+    sale_day_id: "other",
+    ts: "2026-10-10T18:00Z",
+  });
+  h.items.push({ ticket_id: "other", product_id: "p", qty: 20 });
+  const result = run(h, [group("futbol", "club_puebla", 1)]);
+  assert.equal(result.rows[0].expected, 20); // mean(day A 30, day B 10), not mean(10,30,50,10)
+  assert.equal(result.confidence, "baja");
+});
+
+test("morning versus evening uses starts without asking for ends", () => {
+  const h = fixture();
+  delete h.days[0].event_groups;
+  h.games = ["09:00", "11:30", "15:45"].map((start_time) => ({
+    sale_day_id: "club",
+    start_time,
+  }));
+  const result = run(h, [
+    { ...group("futbol", "club_puebla", 1), period: "afternoon" },
+  ]);
+  assert.equal(result.rows[0].expected, 50);
+  assert.equal(result.components[0].timeMatched, true);
+});
+
+test("zero-game training days can support a future training activity without invented match counts", () => {
+  const h = fixture();
+  h.days = [
+    { ...h.days[1], day_type: "entrenamiento_normal", event_groups: null },
+  ];
+  const result = run(h, [group("entrenamiento", "none", 0)]);
+  assert.equal(result.partial, false);
+  assert.equal(result.games, 0);
+  assert.equal(result.rows[0].expected, 12);
+});
+
+test("manual and draft plans never become calibration evidence", () => {
+  const h = fixture();
+  for (const flags of [{ manual: true }, { draft: true }]) {
+    const plan = {
+      event_date: "2026-10-03",
+      event_type: "mixto",
+      games: 3,
+      created_at: "2026-10-02T18:00Z",
+      summary: { groups: h.days[0].event_groups, ...flags },
+      rows: [{ productId: "p", expected: 90 }],
+    };
+    const result = evaluatePlans([plan], h, "2026-10-30")[0];
+    assert.equal(result.complete, false);
+    assert.equal(result.wape, null);
+    assert.match(result.status, /manual/);
+  }
+});

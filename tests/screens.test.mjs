@@ -19,6 +19,12 @@ import {
 } from "../lib/csv.js";
 import { predictPurchase, evaluatePlans } from "../lib/prediction.js";
 import { initPlanner, readPlannerAnswers } from "../lib/planner.js";
+import { showSection } from "../lib/navigation.js";
+import {
+  renderPurchase,
+  renderPurchaseRows,
+  reviewedPurchase,
+} from "../lib/purchase-review.js";
 import { dayMetadata, correctionDiff } from "../lib/corrections.js";
 import {
   initGroupEditor,
@@ -38,6 +44,16 @@ function screen(name, globals = {}) {
   const ctx = {
     document,
     window,
+    showSection,
+    history: {
+      replaceState(a, b, hash) {
+        window.location.hash = hash;
+      },
+    },
+    renderPurchase: (p, products) => renderPurchase(p, products, document),
+    renderPurchaseRows: (p, products) =>
+      renderPurchaseRows(p, products, document),
+    reviewedPurchase: (p) => reviewedPurchase(p, document),
     H,
     selectAll,
     associateLabels: () => associateLabels(document),
@@ -63,6 +79,7 @@ function screen(name, globals = {}) {
     signOut: () => {},
     ...globals,
   };
+  window.location = { hash: "" };
   vm.createContext(ctx);
   vm.runInContext(source, ctx);
   return { document, ctx, run: (s) => vm.runInContext(s, ctx) };
@@ -163,17 +180,33 @@ test("planner navigation hides report filters and restores them when returning t
   assert.equal(
     s.document
       .querySelector('[data-view="planificador"]')
-      .getAttribute("aria-selected"),
-    "true",
+      .getAttribute("aria-current"),
+    "page",
   );
   s.run('showPane("resumen","mode")');
   assert.equal(s.document.getElementById("reportFilters").hidden, false);
   assert(
     !s.document.getElementById("pane-planificador").classList.contains("on"),
   );
+  s.run('showPane("productos")');
+  assert.equal(
+    s.document
+      .querySelector('[data-view="resumen"]')
+      .getAttribute("aria-current"),
+    "page",
+  );
+  s.run('showPane("inventario")');
+  assert.equal(
+    s.document
+      .querySelector('[data-view="registro"]')
+      .getAttribute("aria-current"),
+    "page",
+  );
+  s.run('showPane("usuarios")');
+  assert(s.document.getElementById("pane-inicio").classList.contains("on"));
 });
 
-test("guided answers reach the real calculation and save unchanged with unknown games", async () => {
+test("activity answers reach the real calculation and save with the reviewed agenda", async () => {
   let saved;
   const s = screen("reportes", {
     supabase: {
@@ -188,13 +221,11 @@ test("guided answers reach the real calculation and save unchanged with unknown 
   s.ctx.pastDate = businessDate(past);
   s.run(`
     PRODUCTS=[{id:'p',name:'Agua',active:true}];
-    PRED_DAYS=[{id:'d',date:pastDate,sport:'futbol',day_type:'dia_partido',event_tags:[],status:'reviewed'}];
+    PRED_DAYS=[{id:'d',date:pastDate,sport:'futbol',day_type:'dia_partido',event_tags:[],status:'reviewed',event_groups:[{type:'futbol',teamMode:'academy',team:'',games:1}]}];
     PRED_TICKETS=[{id:'t',sale_day_id:'d',ts:pastDate+'T18:00:00Z'}];
     PRED_ITEMS=[{ticket_id:'t',product_id:'p',qty:10}];
     PRED_INV=[{sale_day_id:'d',product_id:'p',physical_count:5,counted_at:pastDate+'T23:00:00Z',count_source:'manual'}];
     plannerUI=initPlanner({root:document,onCalculate:()=>{renderPrediction();return !!LAST_PREDICTION;},onInvalidate:()=>{LAST_PREDICTION=null;}});
-    for(const option of document.getElementById('predComposition').options)option.removeAttribute('selected');
-    [...document.getElementById('predComposition').options].find(o=>o.value==='single').setAttribute('selected','');
     loadAll=async()=>{};
     renderPrediction();
   `);
@@ -203,20 +234,21 @@ test("guided answers reach the real calculation and save unchanged with unknown 
     null,
     "loading reports must not compute an unfinished wizard",
   );
-  for (let i = 0; i < 4; i++) s.document.getElementById("plannerNext").click();
+  s.document.querySelector('[data-add-activity="academy"]').click();
+  for (let i = 0; i < 2; i++) s.document.getElementById("plannerNext").click();
   s.document.getElementById("btnPredict").click();
   assert.equal(s.document.getElementById("plannerResults").hidden, false);
   assert.match(
     s.document.getElementById("predictorSummary").textContent,
-    /desconocido/,
+    /referencia/,
   );
   assert.equal(s.run("LAST_PREDICTION.rows[0].expected"), 10);
   s.document.getElementById("planReviewed").checked = true;
   await s.run("savePurchasePlan()");
   assert.equal(saved.name, "save_purchase_plan");
-  assert.equal(saved.args.p_plan.games, null);
-  assert.equal(saved.args.p_plan.summary.answers.gamesMode, "unknown");
-  assert.equal(saved.args.p_plan.summary.answers.teamMode, "none");
+  assert.equal(saved.args.p_plan.games, 1);
+  assert.equal(saved.args.p_plan.summary.answers.groups[0].teamMode, "academy");
+  assert.equal(saved.args.p_plan.summary.draft, false);
   assert.equal(saved.args.p_plan.rows[0].chosen, 6);
 });
 
@@ -324,6 +356,9 @@ test("purchase review requires confirmation, preserves the prediction and enforc
   await s.run("savePurchasePlan()");
   assert.equal(saved, null);
   s.document.getElementById("planReviewed").checked = true;
+  s.document.getElementById("planManual").checked = true;
+  s.document.getElementById("planManualReason").value =
+    "Ajuste del encargado por disponibilidad";
   s.document.querySelector(".planChosen").value = "9";
   await s.run("savePurchasePlan()");
   assert.equal(saved, null);

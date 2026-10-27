@@ -40,6 +40,7 @@ for (const name of [
   "2026102001_planning_corrections.sql",
   "2026102101_guided_planning.sql",
   "2026102601_event_groups.sql",
+  "2026102602_activity_planner.sql",
 ]) {
   try {
     await db.exec(
@@ -615,6 +616,70 @@ await assert.rejects(
     ]),
   /sale_days_event_groups_check/,
 );
+const draft = {
+  ...mixedPlan,
+  model_version: "eventos-2026-10-v4",
+  summary: {
+    groups: mixedGroups.map((g) => ({ ...g, period: "morning" })),
+    partial: true,
+    draft: true,
+    manual: true,
+    manualReason: "Estimación del encargado para evento nuevo",
+  },
+  rows: plan.rows.map((r) => ({
+    ...r,
+    expected: null,
+    demand: null,
+    buy: null,
+    chosen: 4,
+    manualOnly: true,
+    manual: true,
+  })),
+};
+const draftRef = "00000000-0000-0000-0000-000000000223";
+const draftId = (
+  await as(operator, () =>
+    db.query("select save_purchase_plan($1,$2) as id", [draft, draftRef]),
+  )
+).rows[0].id;
+assert.equal(
+  (
+    await db.query(
+      "select summary->>'manualReason' as reason,created_by from purchase_plans where id=$1",
+      [draftId],
+    )
+  ).rows[0].created_by,
+  operator,
+);
+assert.equal(
+  (
+    await as(operator, () =>
+      db.query("select save_purchase_plan($1,$2) as id", [draft, draftRef]),
+    )
+  ).rows[0].id,
+  draftId,
+);
+for (const bad of [
+  { ...draft, summary: { ...draft.summary, manualReason: "" } },
+  { ...draft, summary: { ...draft.summary, draft: false } },
+  { ...draft, summary: { ...draft.summary, manual: false } },
+  { ...draft, rows: draft.rows.map((r) => ({ ...r, chosen: 1.5 })) },
+  {
+    ...draft,
+    summary: {
+      ...draft.summary,
+      groups: draft.summary.groups.map((g) => ({ ...g, period: "invented" })),
+    },
+  },
+])
+  await assert.rejects(() =>
+    as(operator, () =>
+      db.query("select save_purchase_plan($1,$2)", [
+        bad,
+        "00000000-0000-0000-0000-000000000224",
+      ]),
+    ),
+  );
 const snapshot = (await db.query("select id,amount from tickets order by id"))
   .rows;
 const backup = await db.dumpDataDir();

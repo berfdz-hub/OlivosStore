@@ -9,7 +9,7 @@ export const CONFIGURED=true;
 const previewRole=new URLSearchParams(location.search).get('role')==='operador'?'operador':'admin';
 const day='2026-10-05';
 const store={
- profiles:[{id:'admin',full_name:(previewRole==='admin'?'Administración':'Capturista')+' · prueba local',role:previewRole,active:true}],schema_versions:[{version:2026102601}],
+ profiles:[{id:'admin',full_name:(previewRole==='admin'?'Administración':'Capturista')+' · prueba local',role:previewRole,active:true}],schema_versions:[{version:2026102602}],
  products_view:[{id:'p1',name:'Agua 600 ml',category:'Bebidas',sell_price:20,cost_price:8,active:true},{id:'p2',name:'Agua 1500 ml',category:'Bebidas',sell_price:30,cost_price:12,active:true}],
  sale_days:[{id:'d1',date:day,sport:'futbol',status:'submitted',day_type:'evento_especial',event_name:'Partido de prueba',event_tags:['futbol'],created_by:'admin',profiles:{full_name:'Prueba local'},tickets:[{amount:100}]}],
  tickets_view:[{id:'t1',sale_day_id:'d1',ts:day+'T18:00:00Z',amount:100,receipt_type:'sale'}],

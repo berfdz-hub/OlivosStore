@@ -25,22 +25,20 @@
         <div class="who">
           <span id="whoName"></span>
           <span class="role-pill" id="rolePill">OPERADOR</span>
-          <a
-            href="reportes.html#planificador"
-            class="btn-ghost"
-            style="text-decoration: none"
-            >Planificar compra</a
-          >
-          <a
-            href="reportes.html"
-            class="btn-ghost"
-            style="text-decoration: none"
-            >Ver reportes</a
-          >
+
           <button class="btn-ghost" data-action="logout">Salir</button>
         </div>
       </div>
     </div>
+    <nav aria-label="Navegación principal" class="dashboard-modes noprint">
+      <div class="wrap">
+        <a class="dashboard-mode" href="reportes.html#inicio">Inicio</a
+        ><a class="dashboard-mode on" href="operador.html" aria-current="page"
+          >Registrar</a
+        ><a class="dashboard-mode" href="reportes.html#planificador">Compras</a
+        ><a class="dashboard-mode" href="reportes.html#resumen">Resultados</a>
+      </div>
+    </nav>
 
     <main class="wrap">
       <div id="weekendNotice"></div>
@@ -137,12 +135,12 @@
             ></textarea>
           </div>
           <details>
-            <summary>Desglosar deportes, partidos y equipos del día</summary>
+            <summary>Actividades de la jornada</summary>
             <p class="hint">
-              Opcional. Agrega un grupo para Club Puebla, otro para otros
-              equipos y otro para cada deporte. Cada partido se cuenta una sola
-              vez. Si el día ya existe, cambia este desglose en Reportes →
-              Corregir / solicitar para dejar historial.
+              Indica qué hubo y cuántos partidos se jugaron para mejorar las
+              próximas compras. Los inicios son opcionales. Si el día ya existe,
+              cambia sus actividades en Registrar → Corregir / solicitar para
+              conservar el historial.
             </p>
             <div id="captureGroups"></div>
           </details>
