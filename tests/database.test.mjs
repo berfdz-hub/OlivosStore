@@ -5,6 +5,7 @@ import { businessDate, parseBusinessDate } from "../lib/csv.js";
 import { checkInvokerSecurity } from "./invoker-security-checks.mjs";
 import { checkParkingCorrections } from "./parking-security-checks.mjs";
 import { checkInventoryImport } from "./inventory-import-checks.mjs";
+import { checkProductEquivalences } from "./product-equivalences-checks.mjs";
 
 const db = new PGlite();
 await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth;
@@ -54,6 +55,7 @@ for (const name of [
   "2026102702_invoker_views.sql",
   "2026102703_parking_corrections.sql",
   "2026102704_inventory_import.sql",
+  "2026102801_product_equivalences.sql",
 ]) {
   try {
     await db.exec(
@@ -1083,6 +1085,7 @@ assert.deepEqual(
 await checkInvokerSecurity(db, { admin, operator, inactive });
 await checkParkingCorrections(db, { admin, operator, inactive });
 await checkInventoryImport(db, { admin, operator, inactive });
+await checkProductEquivalences(db, { admin, operator, inactive });
 const backup = await db.dumpDataDir();
 await db.close();
 const restored = new PGlite({ loadDataDir: backup });

@@ -247,7 +247,7 @@ test("product detail escapes stored data and shows uncertain stock as an estimat
     },
   ];
   const c = {
-    products: [{ id: "p", name: attack, active: true }],
+    products: [{ id: "p", name: attack, active: true, aliases: [{name: attack}] }],
     plans: [],
     history: h,
     admin: true,
@@ -269,6 +269,7 @@ test("product detail escapes stored data and shows uncertain stock as an estimat
     /23.*Estimada/,
   );
   assert.equal(inventoryRows(c)[0].have, null);
+  assert(document.getElementById("inventoryAliasNames").textContent.includes(attack));
   assert.equal(document.querySelectorAll('img[src="x"],[onerror]').length, 0);
   assert(
     document
