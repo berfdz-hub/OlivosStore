@@ -424,6 +424,55 @@ test("deployed pages use external scripts and no inline handlers", () => {
   assert.match(csp.headers[0].headers[0].value, /script-src 'self';/);
 });
 
+test("Loyverse import stays in primary navigation and file pickers are directly discoverable", () => {
+  const dashboard = screen("reportes");
+  for (const view of [
+    "jornadas",
+    "planificador",
+    "inventario",
+    "resumen",
+    "productos",
+    "estacionamiento",
+    "registro",
+  ]) {
+    showSection(dashboard.document, view, false);
+    const link = dashboard.document.querySelector(
+      "#dashboardModes .dashboard-import",
+    );
+    assert.equal(link.getAttribute("href"), "operador.html");
+    assert.match(link.textContent, /Subir archivos/);
+    assert.equal(link.closest("[hidden],details:not([open])"), null);
+  }
+  const capture = screen("operador");
+  assert.equal(
+    capture.document.getElementById("importSalesChoice").getAttribute("href"),
+    "operador.html",
+  );
+  assert.equal(
+    capture.document
+      .getElementById("importInventoryChoice")
+      .getAttribute("href"),
+    "operador.html?task=inventario",
+  );
+  assert.equal(
+    capture.document.getElementById("fInventoryCsv").closest("details"),
+    null,
+  );
+  assert.equal(
+    capture.document.getElementById("inventoryImport").parentElement
+      .firstElementChild.id,
+    "inventoryImport",
+  );
+  assert.equal(
+    capture.document.getElementById("formDay").firstElementChild.id,
+    "captureReceiptsCard",
+  );
+  assert(capture.document.querySelector('label[for="fCsv"]'));
+  assert(capture.document.querySelector('label[for="fInventoryCsv"]'));
+  assert(capture.document.getElementById("fCsv").disabled);
+  assert(capture.document.getElementById("fInventoryCsv").disabled);
+});
+
 test("purchase review requires confirmation, preserves the prediction and enforces storage limits", async () => {
   let saved = null;
   const fixture = {
@@ -547,27 +596,54 @@ test("independent inventory searches products and retries a failed save with the
 test("selecting inventory only previews; saving includes new products and source file atomically", async () => {
   let reader, saved;
   class Reader {
-    constructor() { reader = this; }
-    readAsText() { this.readyState = 1; }
+    constructor() {
+      reader = this;
+    }
+    readAsText() {
+      this.readyState = 1;
+    }
   }
-  const s = screen("operador", { FileReader: Reader, supabase: {
-    rpc: async (name, args) => { saved = {name,args}; return {data:args.p_counts.length}; },
-  } });
-  s.run("INVENTORY_MODE=true;CATALOG=[{id:'p',name:'Agua 600 ml'}];reloadCatalog=async()=>{};resetForm=()=>{};onInventoryCsvChange({target:{files:[{name:'export_items (2).csv'}]}});");
-  reader.result = fs.readFileSync(new URL("fixture-inventory.csv",import.meta.url),'utf8');
+  const s = screen("operador", {
+    FileReader: Reader,
+    supabase: {
+      rpc: async (name, args) => {
+        saved = { name, args };
+        return { data: args.p_counts.length };
+      },
+    },
+  });
+  s.run(
+    "INVENTORY_MODE=true;CATALOG=[{id:'p',name:'Agua 600 ml'}];reloadCatalog=async()=>{};resetForm=()=>{};onInventoryCsvChange({target:{files:[{name:'export_items (2).csv'}]}});",
+  );
+  reader.result = fs.readFileSync(
+    new URL("fixture-inventory.csv", import.meta.url),
+    "utf8",
+  );
   reader.onload();
-  assert.equal(saved,undefined);
-  assert.equal(s.document.querySelectorAll('#tblInv input').length,8);
-  assert.match(s.document.getElementById('inventoryCsvSummary').textContent,/Se darán de alta al guardar/);
-  s.document.querySelector('[aria-label="Conteo de Powerade naranja"]').value='9';
-  s.document.querySelector('[aria-label="Conteo de Powerade naranja"]').dispatchEvent(new s.ctx.window.Event('input'));
-  s.document.getElementById('fCountAt').value=businessDate()+'T00:00';
-  await s.run('submitInventory()');
-  assert.equal(saved.name,'save_inventory_count');
-  assert.equal(saved.args.p_counts.length,8);
-  assert.equal(saved.args.p_counts.filter(c=>!c.product_id).length,7);
-  assert(saved.args.p_counts.every(c=>c.source_file==='export_items (2).csv'));
-  const edited=saved.args.p_counts.find(c=>c.raw==='Powerade naranja');
-  assert.equal(edited.physical_count,9);assert.equal(edited.count_source,'manual');
-  assert.match(s.document.getElementById('msgBox').textContent,/8 conteos guardados/);
+  assert.equal(saved, undefined);
+  assert.equal(s.document.querySelectorAll("#tblInv input").length, 8);
+  assert.match(
+    s.document.getElementById("inventoryCsvSummary").textContent,
+    /Se darán de alta al guardar/,
+  );
+  s.document.querySelector('[aria-label="Conteo de Powerade naranja"]').value =
+    "9";
+  s.document
+    .querySelector('[aria-label="Conteo de Powerade naranja"]')
+    .dispatchEvent(new s.ctx.window.Event("input"));
+  s.document.getElementById("fCountAt").value = businessDate() + "T00:00";
+  await s.run("submitInventory()");
+  assert.equal(saved.name, "save_inventory_count");
+  assert.equal(saved.args.p_counts.length, 8);
+  assert.equal(saved.args.p_counts.filter((c) => !c.product_id).length, 7);
+  assert(
+    saved.args.p_counts.every((c) => c.source_file === "export_items (2).csv"),
+  );
+  const edited = saved.args.p_counts.find((c) => c.raw === "Powerade naranja");
+  assert.equal(edited.physical_count, 9);
+  assert.equal(edited.count_source, "manual");
+  assert.match(
+    s.document.getElementById("msgBox").textContent,
+    /8 conteos guardados/,
+  );
 });

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Captura · Olivos Store</title>
+    <title>Subir archivos de Loyverse · Olivos Store</title>
     <link rel="manifest" href="manifest.json" />
     <link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
@@ -32,8 +32,12 @@
     </div>
     <nav aria-label="Navegación principal" class="dashboard-modes noprint">
       <div class="wrap">
+        <a class="dashboard-import on" href="operador.html" aria-current="page"
+          ><span aria-hidden="true">↑</span> Subir archivos
+          <span class="import-source">Loyverse</span></a
+        >
         <a
-          class="dashboard-mode on"
+          class="dashboard-mode"
           href="reportes.html#jornadas"
           id="captureNavJourneys"
           >Jornadas</a
@@ -50,18 +54,67 @@
     <main class="wrap">
       <div id="weekendNotice"></div>
 
-      <div class="eyebrow">Captura de datos</div>
-      <h2 id="captureTitle" class="section-title">Registrar ventas</h2>
+      <div class="eyebrow">Loyverse</div>
+      <h2 class="section-title">Subir archivos</h2>
+      <nav class="import-choices" aria-label="Tipo de archivo de Loyverse">
+        <a
+          href="operador.html"
+          id="importSalesChoice"
+          class="import-choice on"
+          aria-current="page"
+          ><strong>Ventas y tickets</strong
+          ><span>Recibos de uno o varios días</span></a
+        >
+        <a
+          href="operador.html?task=inventario"
+          id="importInventoryChoice"
+          class="import-choice"
+          ><strong>Inventario y productos</strong
+          ><span>Existencias de la lista de artículos</span></a
+        >
+      </nav>
+      <p id="importReadyStatus" class="hint" role="status">
+        Preparando la carga de archivos…
+      </p>
+      <h3 id="captureTitle">Ventas y tickets</h3>
       <p id="captureIntro" class="footnote" style="margin-top: 6px">
-        Elige la fecha, sube tus recibos y confirma las actividades que
+        Sube tus recibos, revisa la fecha y confirma las actividades que
         realmente hubo. Puedes guardar y volver más tarde.
       </p>
 
       <div id="msgBox"></div>
 
       <form id="formDay">
+        <div id="captureReceiptsCard" class="card">
+          <h3
+            style="
+              font-size: 16px;
+              font-family: &quot;Source Sans 3&quot;;
+              font-weight: 700;
+              margin-bottom: 4px;
+            "
+          >
+            1. Sube los recibos
+          </h3>
+          <p class="footnote" style="margin-bottom: 12px">
+            El CSV "receipts" exportado del POS. Puedes subir un archivo de
+            <b>un solo día</b>, o uno que traiga
+            <b>varios días mezclados</b> (ej. el mes completo) — la app los
+            detecta y separa solos.
+          </p>
+          <label for="fCsv" class="import-file-label"
+            >Selecciona el archivo de ventas de Loyverse (.csv)</label
+          >
+          <input type="file" id="fCsv" accept=".csv,text/csv" disabled />
+          <div id="csvSummary"></div>
+          <label id="replaceReceiptWrap" hidden
+            ><input type="checkbox" id="fReplaceReceipts" /> Conciliar recibos
+            existentes con este archivo (administración; queda
+            registrado)</label
+          >
+        </div>
         <div id="captureDateCard" class="card">
-          <h3>1. Fecha de las ventas</h3>
+          <h3>2. Revisa la fecha de las ventas</h3>
           <div class="field">
             <label>Fecha</label>
             <input type="date" id="fDate" required />
@@ -119,31 +172,6 @@
             </div>
           </div>
         </div>
-        <div id="captureReceiptsCard" class="card">
-          <h3
-            style="
-              font-size: 16px;
-              font-family: &quot;Source Sans 3&quot;;
-              font-weight: 700;
-              margin-bottom: 4px;
-            "
-          >
-            2. Sube los recibos
-          </h3>
-          <p class="footnote" style="margin-bottom: 12px">
-            El CSV "receipts" exportado del POS. Puedes subir un archivo de
-            <b>un solo día</b>, o uno que traiga
-            <b>varios días mezclados</b> (ej. el mes completo) — la app los
-            detecta y separa solos.
-          </p>
-          <input type="file" id="fCsv" accept=".csv,text/csv" />
-          <div id="csvSummary"></div>
-          <label id="replaceReceiptWrap" hidden
-            ><input type="checkbox" id="fReplaceReceipts" /> Conciliar recibos
-            existentes con este archivo (administración; queda
-            registrado)</label
-          >
-        </div>
         <section class="card" id="captureActualCard">
           <h3>3. Confirma lo que realmente hubo</h3>
           <p class="hint" id="captureAgendaHint">
@@ -191,8 +219,35 @@
         </p>
 
         <div hidden class="card" id="cardInv">
+          <section
+            id="inventoryImport"
+            aria-labelledby="inventoryImportTitle"
+            class="import-file-panel"
+          >
+            <h3 id="inventoryImportTitle">Sube el archivo de inventario</h3>
+            <label for="fInventoryCsv" class="import-file-label"
+              >Selecciona el archivo de productos y existencias (.csv)</label
+            >
+            <p class="footnote" style="margin-bottom: 10px">
+              En Loyverse: <b>Back Office → Lista de artículos → Exportar</b>.
+            </p>
+            <input
+              type="file"
+              id="fInventoryCsv"
+              accept=".csv,text/csv"
+              disabled
+            />
+            <p class="hint">
+              Los productos nuevos se dan de alta automáticamente al guardar.
+              Conservamos el nombre del archivo en el historial.
+            </p>
+            <div id="inventoryCsvSummary"></div>
+          </section>
           <div class="inventory-time" id="countClock">
             <p>Cuándo: <b>Ahora, automáticamente</b></p>
+            <p class="hint">
+              Si el archivo se exportó otro día, registra esa fecha aquí.
+            </p>
             <label class="check-option"
               ><input id="countEarlier" type="checkbox" /> Registrar un conteo
               anterior</label
@@ -214,28 +269,7 @@
             <label for="fCountAt">Fecha y hora del conteo del día</label
             ><input type="datetime-local" id="fCountAt" />
           </div>
-          <details id="inventoryImport">
-            <summary>Importar archivo de existencias</summary>
-            <p class="hint">
-              El archivo contiene existencias del sistema. Si se exportó antes,
-              cambia la fecha del conteo. Los recibos de venta no contienen
-              inventario.
-            </p>
-            <label style="margin-bottom: 6px"
-              >Importar existencias de Loyverse</label
-            >
-            <p class="footnote" style="margin-bottom: 10px">
-              En Loyverse abre
-              <b>Back Office → Lista de artículos → Exportar</b>. Sube aquí ese
-              CSV; no uses el archivo de recibos.
-            </p>
-            <input type="file" id="fInventoryCsv" accept=".csv,text/csv" />
-            <p class="hint">
-              Los productos nuevos se dan de alta automáticamente al guardar.
-              Conservamos el nombre del archivo en el historial.
-            </p>
-            <div id="inventoryCsvSummary"></div>
-          </details>
+
           <div class="field">
             <label for="inventorySearch">Buscar producto para contar</label
             ><input
@@ -413,7 +447,9 @@
         </div>
 
         <div class="row-actions capture-save">
-          <button class="btn" type="submit" id="btnSave">Guardar día</button>
+          <button class="btn" type="submit" id="btnSave" disabled>
+            Guardar día
+          </button>
         </div>
       </form>
 
